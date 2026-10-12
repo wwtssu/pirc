@@ -1,10 +1,10 @@
 # PiRC
 
-PiRC is a remote client for coding agents, with support for multiple devices, streaming conversations, session controls, and history restoration.
+PiRC is a remote client for coding agents, with support for multiple devices, streaming sessions, session controls, and history restoration.
 
 <p>
   <img src="docs/images/client-sessions-en.png" alt="PiRC session list in English" width="280">
-  <img src="docs/images/client-conversation-en.png" alt="PiRC conversation with thinking, tool output, and Markdown in English" width="280">
+  <img src="docs/images/client-conversation-en.png" alt="PiRC session with thinking, tool output, and Markdown in English" width="280">
 </p>
 
 ## Project structure

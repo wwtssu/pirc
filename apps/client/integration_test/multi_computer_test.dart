@@ -28,7 +28,7 @@ class ComputerPeer {
     ...identity,
     'agent_id': 'pi',
     'cwd': '/tmp/$name',
-    'name': 'Conversation $name',
+    'name': 'Session $name',
     'state': 'idle',
     'revision': 1,
     'needs_local_attention': false,

@@ -20,7 +20,7 @@ class ComputerController extends PircController {
           'session_id': 'same-session',
           'instance_id': 'same-instance',
           'cwd': '/tmp/project',
-          'name': 'Conversation',
+          'name': 'Session',
           'state': 'idle',
           'revision': 1,
           'needs_local_attention': false,

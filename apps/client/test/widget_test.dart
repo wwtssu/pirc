@@ -588,7 +588,7 @@ void main() {
         'phase': 'completed',
         'text': List.filled(
           40,
-          'Checking tool output and conversation context.',
+          'Checking tool output and session context.',
         ).join('\n'),
         'complete': true,
       };

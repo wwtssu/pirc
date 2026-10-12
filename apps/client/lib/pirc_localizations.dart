@@ -35,39 +35,37 @@ extension PircLocalization on BuildContext {
       "Load earlier messages" => l10n.loadEarlierRecords,
       "Load newer messages" => l10n.loadLaterRecords,
       "Beginning of retained history" => l10n.earliestRetainedRecord,
-      "Beginning of conversation" => l10n.earliestRecord,
-      "Loading conversation\u2026" => l10n.loadingSession,
+      "Beginning of session" => l10n.earliestRecord,
+      "Loading session\u2026" => l10n.loadingSession,
       "Jump to latest" => l10n.jumpToLatest,
       "Current device" => l10n.currentDevice,
-      "Creating conversation" => l10n.creatingConversation,
-      "Restoring conversation" => l10n.restoringConversation,
+      "Creating session" => l10n.creatingConversation,
+      "Restoring session" => l10n.restoringConversation,
       "Opening terminal and waiting for the session\u2026" =>
         l10n.waitingForNewSession,
-      "Restoring conversation and waiting for the session\u2026" =>
+      "Restoring session and waiting for it to become available\u2026" =>
         l10n.waitingForRestoredSession,
       "Session could not be confirmed" => l10n.sessionNotConfirmed,
       "OK" => l10n.gotIt,
       "Timed out waiting for the session. The terminal may already be open. Check the device and refresh the session list before creating another session." =>
         l10n.launchTimedOut,
       "Back" => l10n.back,
-      "New conversation" => l10n.newConversation,
-      "Start a conversation" => l10n.startConversation,
-      "Choose a working directory on the device to start a conversation." =>
+      "New session" => l10n.newConversation,
+      "Start a session" => l10n.startConversation,
+      "Choose a working directory on the device to start a session." =>
         l10n.chooseDirectoryDescription,
       "Working directory" => l10n.workingDirectory,
       "Browse device directories" => l10n.browseDeviceDirectories,
-      "Create conversation" => l10n.createConversation,
-      "Restore a conversation" => l10n.restoreHistory,
+      "Create session" => l10n.createConversation,
+      "Restore a session" => l10n.restoreHistory,
       "Refresh history" => l10n.refreshHistory,
-      "Continue a saved conversation on the device." => l10n.restoreDescription,
+      "Continue a saved session on the device." => l10n.restoreDescription,
       "Search by name or directory" => l10n.searchHistory,
-      "Loading saved conversations" => l10n.loadingHistory,
-      "Reading conversations saved on the device" =>
-        l10n.readingSavedConversations,
+      "Loading saved sessions" => l10n.loadingHistory,
+      "Reading sessions saved on the device" => l10n.readingSavedConversations,
       "Unable to load history. Refresh to retry." => l10n.historyLoadFailed,
-      "No matching conversations" => l10n.noMatchingHistory,
-      "No saved conversations" => l10n.noSavedHistory,
-      "Conversation name" => l10n.newConversationName,
+      "No matching sessions" => l10n.noMatchingHistory,
+      "No saved sessions" => l10n.noSavedHistory,
       "Unnamed session" => l10n.unnamedSession,
       "Cancel" => l10n.cancel,
       "Create" => l10n.create,
@@ -160,7 +158,7 @@ extension PircLocalization on BuildContext {
       "No active sessions" => l10n.noOnlineSessions,
       "Connect a device to view and control its sessions." =>
         l10n.connectToViewSessions,
-      "Create a conversation or restore one from history. You can also start an agent in the device terminal." =>
+      "Create a session or restore one from history. You can also start an agent in the device terminal." =>
         l10n.noSessionsDescription,
       "Restoring connection" => l10n.restoringConnection,
       "Refresh" => l10n.refresh,
@@ -178,9 +176,9 @@ extension PircLocalization on BuildContext {
       "Compacting" => l10n.compacting,
       "Complete the operation in the device terminal" =>
         l10n.completeOnTerminal,
-      "Some messages are missing. This conversation may be incomplete." =>
+      "Some messages are missing. This session may be incomplete." =>
         l10n.incompleteConversation,
-      "Continue the conversation" => l10n.continueConversation,
+      "Continue the session" => l10n.continueConversation,
       "Reopen the session on the device to continue." =>
         l10n.reopenSessionDescription,
       "Send a message below to continue this session." =>

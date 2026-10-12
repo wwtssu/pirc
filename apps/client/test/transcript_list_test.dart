@@ -556,7 +556,7 @@ void main() {
             'role': 'assistant',
             'text': List.filled(
               longReply ? 80 : 1,
-              'Latest response. Selecting this text should keep the conversation at its current position.',
+              'Latest response. Selecting this text should keep the session at its current position.',
             ).join(''),
             'complete': true,
           },
@@ -694,13 +694,13 @@ void main() {
     },
   );
   testWidgets(
-    'initial history loading and failed retry do not flash empty conversation',
+    'initial history loading and failed retry do not flash empty session',
     (tester) async {
       final model = PagedController()
         ..applyDecodedView(data([], initialized: false, loading: 'latest'));
       await open(tester, model);
-      expect(find.text('Loading conversation…'), findsOneWidget);
-      expect(find.text('Continue the conversation'), findsNothing);
+      expect(find.text('Loading session…'), findsOneWidget);
+      expect(find.text('Continue the session'), findsNothing);
       model.applyDecodedView(
         data([], initialized: false, error: 'Unable to load messages'),
       );

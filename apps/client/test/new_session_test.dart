@@ -301,7 +301,7 @@ void main() {
       await tester.tap(find.byKey(const Key('create-session')));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      expect(find.text('New conversation'), findsOneWidget);
+      expect(find.text('New session'), findsOneWidget);
       expect(find.byType(PircLoading), findsOneWidget);
       model.catalog.complete(
         SavedSessionCatalog(
@@ -316,7 +316,7 @@ void main() {
       await tester.pump();
       expect(model.calls, [('/tmp/project', 's')]);
       expect(
-        find.text('Restoring conversation and waiting for the session…'),
+        find.text('Restoring session and waiting for it to become available…'),
         findsOneWidget,
       );
       expect(
@@ -494,7 +494,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byKey(const Key('session-launch-dialog')), findsOneWidget);
       expect(
-        find.text('Restoring conversation and waiting for the session…'),
+        find.text('Restoring session and waiting for it to become available…'),
         findsOneWidget,
       );
       await tester.tapAt(const Offset(10, 10));

@@ -871,7 +871,7 @@ void main() {
             .text,
         '/remote',
       );
-      expect(find.text('New conversation'), findsOneWidget);
+      expect(find.text('New session'), findsOneWidget);
       await tester.pumpWidget(const SizedBox());
       model.dispose();
     },
@@ -911,7 +911,7 @@ void main() {
       expect(model.calls.length, 2);
       await tester.tap(find.byKey(const Key('directory-cancel')));
       await tester.pumpAndSettle();
-      expect(find.text('New conversation'), findsOneWidget);
+      expect(find.text('New session'), findsOneWidget);
       expect(
         tester
             .widget<TextField>(find.byKey(const Key('new-session-cwd')))

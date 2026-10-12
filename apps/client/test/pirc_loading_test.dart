@@ -28,8 +28,8 @@ void main() {
               child: Padding(
                 padding: EdgeInsets.all(PircSpacing.s24),
                 child: PircLoading(
-                  title: 'Loading saved conversations',
-                  detail: 'Reading conversations saved on the device',
+                  title: 'Loading saved sessions',
+                  detail: 'Reading sessions saved on the device',
                 ),
               ),
             ),
@@ -37,7 +37,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      expect(find.text('Loading saved conversations'), findsOneWidget);
+      expect(find.text('Loading saved sessions'), findsOneWidget);
       expect(tester.takeException(), isNull);
       expect(tester.binding.hasScheduledFrame, isFalse);
       await tester.pumpWidget(const SizedBox());
