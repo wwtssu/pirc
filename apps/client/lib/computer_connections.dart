@@ -197,13 +197,13 @@ class ComputerConnections extends ChangeNotifier {
     await _persist(profiles: true);
   }
 
-  Future<void> _connect(ComputerConnection computer) {
+  Future<void> _connect(ComputerConnection computer, {bool pairAgain = false}) {
     computer.controller.otherServerIds = _computers
         .where((c) => c != computer)
         .map((c) => c.controller.serverId)
         .whereType<String>()
         .toList();
-    return computer.controller.connect(computer.endpoint);
+    return computer.controller.connect(computer.endpoint, pairAgain: pairAgain);
   }
 
   Future<void> reconnectCurrent() {
@@ -219,6 +219,8 @@ class ComputerConnections extends ChangeNotifier {
     notifyListeners();
     unawaited(_persist());
   }
+
+  Future<void> repairCurrent() => _connect(active, pairAgain: true);
 
   Future<void> configureCurrent(
     String endpoint, {

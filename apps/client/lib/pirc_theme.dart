@@ -92,6 +92,7 @@ abstract final class PircLayout {
   static const loadingDotSize = 6.0;
   static const loadingStrokeWidth = 2.0;
   static const dialogWidth = 310.0;
+  static const loadingDialogWidth = 260.0;
   static const directoryRowHeight = 56.0;
   static const inactiveOpacity = .5;
 }

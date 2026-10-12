@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'pirc_localizations.dart';
+import 'pirc_loading.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -75,6 +78,7 @@ class PircScreen extends StatefulWidget {
 class _PircScreenState extends State<PircScreen> {
   bool detail = false;
   bool pairingOpen = false;
+  bool pairingConnecting = false;
   ComputerConnections get computers => widget.computers;
   PircController get model => computers.active.controller;
   @override
@@ -86,7 +90,7 @@ class _PircScreenState extends State<PircScreen> {
   void refresh() {
     if (mounted) {
       setState(() {});
-      if (model.pairing != null && !pairingOpen) {
+      if (model.pairing != null && !pairingOpen && !pairingConnecting) {
         pairingOpen = true;
         WidgetsBinding.instance.addPostFrameCallback(
           (_) => waitForServerApproval(),
@@ -198,7 +202,6 @@ class _PircScreenState extends State<PircScreen> {
         initialBackupAddresses: adding
             ? const []
             : computers.active.addresses.skip(1).toList(),
-        boundServerId: adding ? null : model.serverId,
         occupiedAddresses: computers.computers
             .where((c) => adding || c != computers.active)
             .expand((c) => c.addresses)
@@ -208,10 +211,9 @@ class _PircScreenState extends State<PircScreen> {
     );
     if (mounted && result != null) {
       setState(() => detail = false);
-      if (result.resetIdentity) {
-        await model.disconnect();
-        model.serverId = null;
-        model.serverKey = null;
+      if (result.repair) {
+        await repairDevice();
+        return;
       }
       if (adding) {
         await computers.addComputer(
@@ -227,6 +229,115 @@ class _PircScreenState extends State<PircScreen> {
         );
       }
     }
+  }
+
+  Future<void> repairDevice() async {
+    final controller = model;
+    final navigator = Navigator.of(context);
+    pairingConnecting = true;
+    String? failure;
+    var completed = false;
+    late final DialogRoute<bool> route;
+    void finish(bool ready, [String? error]) {
+      if (completed) return;
+      completed = true;
+      failure = error;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (route.isActive) navigator.removeRoute(route, ready);
+      });
+    }
+
+    void check() {
+      if (controller.pairing != null || controller.connection == 'connected') {
+        finish(true);
+      } else if (controller.connection == 'blocked' ||
+          (controller.connection == 'disconnected' &&
+              controller.error != null)) {
+        finish(false, controller.error);
+      }
+    }
+
+    route = DialogRoute<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        key: const Key('pairing-connection-dialog'),
+        shape: const RoundedRectangleBorder(borderRadius: PircRadii.session),
+        constraints: const BoxConstraints(
+          maxWidth: PircLayout.loadingDialogWidth,
+        ),
+        child: SizedBox(
+          width: PircLayout.loadingDialogWidth,
+          child: Padding(
+            padding: const EdgeInsets.all(PircSpacing.s20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                PircLoading(
+                  title: context.l10n.connectingDevice,
+                  compact: true,
+                ),
+                const SizedBox(height: PircSpacing.s16),
+                TextButton(
+                  onPressed: () => Navigator.pop(context, false),
+                  style: TextButton.styleFrom(
+                    backgroundColor: context.pircColors.surfaceContainerLowest,
+                    minimumSize: const Size.fromHeight(PircLayout.actionSize),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: PircRadii.brand,
+                    ),
+                  ),
+                  child: Text(context.l10n.cancel),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    final waiting = navigator.push(route);
+    controller.addListener(check);
+    final timeout = Timer(
+      const Duration(seconds: 20),
+      () => finish(
+        false,
+        'Pairing connection timed out. Check that the server is running and try again.',
+      ),
+    );
+    unawaited(
+      computers.repairCurrent().catchError((Object error) {
+        finish(false, '$error');
+      }),
+    );
+    bool? ready;
+    try {
+      ready = await waiting;
+    } finally {
+      completed = true;
+      timeout.cancel();
+      controller.removeListener(check);
+      pairingConnecting = false;
+    }
+    if (ready != true) {
+      await controller.disconnect();
+      if (failure != null && mounted) {
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            key: const Key('pairing-connection-failure'),
+            title: Text(context.l10n.pairingConnectionFailed),
+            content: Text(context.localize(failure!)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(context.l10n.gotIt),
+              ),
+            ],
+          ),
+        );
+      }
+    }
+    if (mounted) refresh();
   }
 
   void addComputer() => connect(adding: true);
@@ -1716,9 +1827,9 @@ class ConnectionOptions {
     this.url, {
     this.name = '',
     this.backupAddresses = const [],
-    this.resetIdentity = false,
+    this.repair = false,
   });
-  final bool resetIdentity;
+  final bool repair;
   final List<String> backupAddresses;
   final String url;
   final String name;
@@ -1731,11 +1842,9 @@ class ConnectionDialog extends StatefulWidget {
     this.adding = false,
     this.initialName = '',
     this.initialBackupAddresses = const [],
-    this.boundServerId,
     this.occupiedAddresses = const {},
   });
   final List<String> initialBackupAddresses;
-  final String? boundServerId;
   final Set<String> occupiedAddresses;
   final bool adding;
   final String initialName;
@@ -1776,7 +1885,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
 
   late final name = TextEditingController(text: widget.initialName);
   final form = GlobalKey<FormState>();
-  bool resetIdentity = false;
   @override
   void dispose() {
     for (final controller in addresses) {
@@ -1898,14 +2006,16 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                   label: Text(context.l10n.addBackupAddress),
                 ),
                 const SizedBox(height: PircSpacing.s16),
-                if (widget.boundServerId != null)
+                if (!widget.adding && widget.endpoint.isNotEmpty)
                   TextButton(
+                    key: const Key('repair-device'),
                     onPressed: () async {
+                      FocusManager.instance.primaryFocus?.unfocus();
                       final accepted = await showDialog<bool>(
                         context: context,
                         builder: (context) => AlertDialog(
-                          title: Text(context.l10n.rebindDeviceQuestion),
-                          content: Text(context.l10n.rebindDeviceDescription),
+                          title: Text(context.l10n.repairDeviceQuestion),
+                          content: Text(context.l10n.repairDeviceDescription),
                           actions: [
                             TextButton(
                               onPressed: () => Navigator.pop(context, false),
@@ -1913,20 +2023,25 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             ),
                             FilledButton(
                               onPressed: () => Navigator.pop(context, true),
-                              child: Text(context.l10n.rebind),
+                              key: const Key('confirm-repair-device'),
+                              child: Text(context.l10n.repair),
                             ),
                           ],
                         ),
                       );
-                      if (mounted && accepted == true) {
-                        setState(() => resetIdentity = true);
+                      if (context.mounted && accepted == true) {
+                        Navigator.pop(
+                          context,
+                          ConnectionOptions(
+                            widget.endpoint,
+                            name: widget.initialName,
+                            backupAddresses: widget.initialBackupAddresses,
+                            repair: true,
+                          ),
+                        );
                       }
                     },
-                    child: Text(
-                      resetIdentity
-                          ? context.l10n.saveAndRebind
-                          : context.l10n.rebindDevice,
-                    ),
+                    child: Text(context.l10n.repairDevice),
                   ),
                 OverflowBar(
                   alignment: MainAxisAlignment.end,
@@ -1946,7 +2061,6 @@ class _ConnectionDialogState extends State<ConnectionDialog> {
                             ConnectionOptions(
                               computerAddress(address.text),
                               name: name.text,
-                              resetIdentity: resetIdentity,
                               backupAddresses: addresses
                                   .skip(1)
                                   .map((a) => computerAddress(a.text))

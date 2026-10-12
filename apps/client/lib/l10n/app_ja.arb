@@ -158,11 +158,10 @@
   "moveDown": "下に移動",
   "removeAddress": "アドレスを削除",
   "addBackupAddress": "代替アドレスを追加",
-  "rebindDeviceQuestion": "デバイスを再登録しますか？",
-  "rebindDeviceDescription": "保存すると各アドレスのデバイスを再確認します。すべて同じデバイスを指していることを確認してください。",
-  "rebind": "再登録",
-  "saveAndRebind": "保存して再登録",
-  "rebindDevice": "デバイスを再登録",
+  "repairDeviceQuestion": "デバイスを再ペアリングしますか？",
+  "repairDeviceDescription": "保存済みの接続アドレスで再ペアリングします。サーバー側で接続を再承認してください。",
+  "repair": "再ペアリング",
+  "repairDevice": "再ペアリング",
   "add": "追加",
   "save": "保存",
   "deviceDisconnected": "接続が切断されました。再接続して再試行してください。",
@@ -354,5 +353,7 @@
   "unknownCommandResult": "コマンドの結果は未確認です",
   "reusedRequestPayload": "要求IDは別の操作で使用されています",
   "commandCacheFull": "コマンドのキャッシュがいっぱいです",
-  "commandForwarded": "コマンドを転送しました。完了は未確認です"
+  "commandForwarded": "コマンドを転送しました。完了は未確認です",
+  "pairingConnectionFailed": "デバイスに接続できません",
+  "pairingConnectionTimedOut": "ペアリング接続がタイムアウトしました。サーバーが起動していることを確認して再試行してください。"
 }

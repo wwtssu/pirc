@@ -210,11 +210,10 @@
   "moveDown": "Move down",
   "removeAddress": "Remove address",
   "addBackupAddress": "Add alternative address",
-  "rebindDeviceQuestion": "Rebind this device?",
-  "rebindDeviceDescription": "Saving will verify the device for these addresses again. Make sure all addresses point to the same device.",
-  "rebind": "Rebind",
-  "saveAndRebind": "Save and rebind",
-  "rebindDevice": "Rebind device",
+  "repairDeviceQuestion": "Pair this device again?",
+  "repairDeviceDescription": "Pair again using the saved connection addresses. Approve the connection on the server.",
+  "repair": "Pair again",
+  "repairDevice": "Pair device again",
   "add": "Add",
   "save": "Save",
   "deviceDisconnected": "Device disconnected. Reconnect and try again.",
@@ -463,5 +462,7 @@
   "unknownCommandResult": "Command result is unknown",
   "reusedRequestPayload": "Request ID has different payload",
   "commandCacheFull": "Command cache is full",
-  "commandForwarded": "Command forwarded; completion not confirmed"
+  "commandForwarded": "Command forwarded; completion not confirmed",
+  "pairingConnectionFailed": "Unable to connect for pairing",
+  "pairingConnectionTimedOut": "Pairing connection timed out. Check that the server is running and try again."
 }

@@ -212,12 +212,13 @@ extension PircLocalization on BuildContext {
       "Move down" => l10n.moveDown,
       "Remove address" => l10n.removeAddress,
       "Add alternative address" => l10n.addBackupAddress,
-      "Rebind this device?" => l10n.rebindDeviceQuestion,
-      "Saving will verify the device for these addresses again. Make sure all addresses point to the same device." =>
-        l10n.rebindDeviceDescription,
-      "Rebind" => l10n.rebind,
-      "Save and rebind" => l10n.saveAndRebind,
-      "Rebind device" => l10n.rebindDevice,
+      "Pairing connection timed out. Check that the server is running and try again." =>
+        l10n.pairingConnectionTimedOut,
+      "Pair this device again?" => l10n.repairDeviceQuestion,
+      "Pair again using the saved connection addresses. Approve the connection on the server." =>
+        l10n.repairDeviceDescription,
+      "Pair again" => l10n.repair,
+      "Pair device again" => l10n.repairDevice,
       "Add" => l10n.add,
       "Save" => l10n.save,
       "Device disconnected. Reconnect and try again." =>

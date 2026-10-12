@@ -12,9 +12,11 @@ class TestComputer extends PircController {
   final Completer<void>? gate;
   final List<String>? started;
   int connects = 0;
+  bool pairingRequested = false;
   @override
-  Future<void> connect(String url) async {
+  Future<void> connect(String url, {bool pairAgain = false}) async {
     connects++;
+    pairingRequested = pairAgain;
     started?.add(url);
     endpoint = url;
     connection = 'connecting';
@@ -31,6 +33,44 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     FlutterSecureStorage.setMockInitialValues({});
   });
+
+  test(
+    'pairing again preserves stored trust until approval succeeds',
+    () async {
+      final preferences = await SharedPreferences.getInstance();
+      final store = ConnectionStore(
+        preferences,
+        storage: const FlutterSecureStorage(),
+      );
+      final computers = ComputerConnections(
+        preferences: preferences,
+        store: store,
+        controllerFactory: TestComputer.new,
+      );
+      await computers.addComputer(
+        'http://saved',
+        name: 'Saved',
+        backupAddresses: ['http://backup'],
+      );
+      final device = computers.active;
+      final controller = device.controller as TestComputer;
+      controller.serverId = 'old-id';
+      controller.serverKey = 'old-key';
+      await store.saveComputers([device.configuration], device.id);
+      await computers.repairCurrent();
+      expect(computers.active, same(device));
+      expect(controller.connects, 2);
+      expect(device.addresses, ['http://saved:43123', 'http://backup:43123']);
+      expect(device.name, 'Saved');
+      expect(controller.pairingRequested, isTrue);
+      expect(controller.serverId, 'old-id');
+      expect(controller.serverKey, 'old-key');
+      final saved = await store.loadComputers();
+      expect(saved.single.serverId, 'old-id');
+      expect(saved.single.serverKey, 'old-key');
+      computers.dispose();
+    },
+  );
 
   test('multi-computer persistence isolates secure keys', () async {
     final preferences = await SharedPreferences.getInstance();

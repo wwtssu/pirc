@@ -41,7 +41,7 @@ class ComputerController extends PircController {
   });
 
   @override
-  Future<void> connect(String url) async {
+  Future<void> connect(String url, {bool pairAgain = false}) async {
     connects++;
     endpoint = url;
     update();

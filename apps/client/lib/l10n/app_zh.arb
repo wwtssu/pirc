@@ -158,11 +158,10 @@
   "moveDown": "下移",
   "removeAddress": "删除地址",
   "addBackupAddress": "添加备选地址",
-  "rebindDeviceQuestion": "重新绑定设备？",
-  "rebindDeviceDescription": "保存后将重新确认这些地址对应的设备。请确认它们都指向同一设备。",
-  "rebind": "重新绑定",
-  "saveAndRebind": "保存后重新绑定",
-  "rebindDevice": "重新绑定设备",
+  "repairDeviceQuestion": "重新配对设备？",
+  "repairDeviceDescription": "使用已保存的连接地址重新配对，需要在服务端重新批准连接。",
+  "repair": "重新配对",
+  "repairDevice": "重新配对",
   "add": "添加",
   "save": "保存",
   "deviceDisconnected": "设备连接已中断，请连接后重试",
@@ -354,5 +353,7 @@
   "unknownCommandResult": "命令结果未确认",
   "reusedRequestPayload": "请求标识已用于其他操作",
   "commandCacheFull": "命令缓存已满",
-  "commandForwarded": "命令已转发，完成状态未确认"
+  "commandForwarded": "命令已转发，完成状态未确认",
+  "pairingConnectionFailed": "无法连接设备",
+  "pairingConnectionTimedOut": "配对连接超时，请确认服务端已运行后重试。"
 }

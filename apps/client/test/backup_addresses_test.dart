@@ -5,6 +5,64 @@ import 'package:pirc/pirc_screen.dart';
 import 'package:pirc/pirc_theme.dart';
 
 void main() {
+  testWidgets('pairing again closes settings and ignores unsaved edits', (
+    tester,
+  ) async {
+    ConnectionOptions? result;
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: const Locale('en'),
+        theme: pircTheme(),
+        home: Builder(
+          builder: (context) => Scaffold(
+            body: TextButton(
+              onPressed: () async {
+                result = await showDialog<ConnectionOptions>(
+                  context: context,
+                  builder: (_) => const ConnectionDialog(
+                    endpoint: 'http://saved:43123',
+                    initialName: 'Saved device',
+                    initialBackupAddresses: ['http://backup:43123'],
+                    ),
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('connection-name')),
+      'Unsaved name',
+    );
+    await tester.enterText(
+      find.byKey(const Key('connection-url')),
+      'invalid address',
+    );
+    await tester.ensureVisible(find.byKey(const Key('repair-device')));
+    await tester.tap(find.byKey(const Key('repair-device')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel').last);
+    await tester.pumpAndSettle();
+    expect(result, isNull);
+    expect(find.byType(ConnectionDialog), findsOneWidget);
+    await tester.tap(find.byKey(const Key('repair-device')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('confirm-repair-device')));
+    await tester.pumpAndSettle();
+    expect(find.byType(ConnectionDialog), findsNothing);
+    expect(result!.repair, isTrue);
+    expect(result!.url, 'http://saved:43123');
+    expect(result!.backupAddresses, ['http://backup:43123']);
+    expect(result!.name, 'Saved device');
+    expect(tester.takeException(), isNull);
+  });
+
   for (final width in [320.0, 390.0]) {
     testWidgets(
       'backup addresses validate, reorder and save on a $width phone',

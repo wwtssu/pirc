@@ -417,7 +417,7 @@ class PircController extends ChangeNotifier {
       s.ready &&
       (s.state == 'running' || s.state == 'stopping') &&
       !pending(s);
-  Future<void> connect(String url) async {
+  Future<void> connect(String url, {bool pairAgain = false}) async {
     await disconnect();
     final epoch = ++_epoch;
     endpoint = computerAddress(url);
@@ -433,10 +433,10 @@ class PircController extends ChangeNotifier {
       if (epoch != _epoch) return;
       final client = await bridge.createComputerClient(
         addresses: addresses.isEmpty ? [endpoint] : addresses,
-        serverId: serverId,
+        serverId: pairAgain ? null : serverId,
         otherServerIds: otherServerIds,
         secret: secret,
-        serverKey: serverKey,
+        serverKey: pairAgain ? null : serverKey,
       );
       if (epoch != _epoch) {
         await bridge.closeClient(client: client);

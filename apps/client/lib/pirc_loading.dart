@@ -6,10 +6,16 @@ import 'pirc_theme.dart';
 
 /// Shared loading state. Only the small activity mark animates; labels stay still.
 class PircLoading extends StatelessWidget {
-  const PircLoading({super.key, required this.title, this.detail});
+  const PircLoading({
+    super.key,
+    required this.title,
+    this.detail,
+    this.compact = false,
+  });
 
   final String title;
   final String? detail;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -20,10 +26,10 @@ class PircLoading extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const _ActivityMark(),
-          const SizedBox(height: PircSpacing.s20),
+          SizedBox(height: compact ? PircSpacing.s12 : PircSpacing.s20),
           Text(
             title,
-            style: context.pircText.cardTitle,
+            style: compact ? context.pircText.body : context.pircText.cardTitle,
             textAlign: TextAlign.center,
           ),
           if (detail != null) ...[
