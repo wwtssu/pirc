@@ -25,7 +25,7 @@ class PircLoading extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const _ActivityMark(),
+          const PircLoadingMark(),
           SizedBox(height: compact ? PircSpacing.s12 : PircSpacing.s20),
           Text(
             title,
@@ -46,14 +46,15 @@ class PircLoading extends StatelessWidget {
   );
 }
 
-class _ActivityMark extends StatefulWidget {
-  const _ActivityMark();
+class PircLoadingMark extends StatefulWidget {
+  const PircLoadingMark({super.key, this.color});
+  final Color? color;
 
   @override
-  State<_ActivityMark> createState() => _ActivityMarkState();
+  State<PircLoadingMark> createState() => _ActivityMarkState();
 }
 
-class _ActivityMarkState extends State<_ActivityMark>
+class _ActivityMarkState extends State<PircLoadingMark>
     with SingleTickerProviderStateMixin {
   late final animation = AnimationController(
     vsync: this,
@@ -103,7 +104,7 @@ class _ActivityMarkState extends State<_ActivityMark>
                     width: PircLayout.loadingDotSize,
                     height: PircLayout.loadingDotSize,
                     decoration: BoxDecoration(
-                      color: context.pircColors.primary,
+                      color: widget.color ?? context.pircColors.primary,
                       shape: BoxShape.circle,
                     ),
                   ),

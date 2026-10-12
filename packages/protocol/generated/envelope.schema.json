@@ -139,6 +139,9 @@
     "DirectoryEntry": {
       "additionalProperties": false,
       "properties": {
+        "is_directory": {
+          "type": "boolean"
+        },
         "name": {
           "type": "string"
         },
@@ -148,7 +151,8 @@
       },
       "required": [
         "name",
-        "path"
+        "path",
+        "is_directory"
       ],
       "type": "object"
     },
@@ -546,7 +550,7 @@
         {
           "additionalProperties": false,
           "properties": {
-            "directories": {
+            "entries": {
               "items": {
                 "$ref": "#/$defs/DirectoryEntry"
               },
@@ -579,7 +583,7 @@
             "type",
             "path",
             "home",
-            "directories"
+            "entries"
           ],
           "type": "object"
         },

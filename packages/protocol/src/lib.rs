@@ -157,6 +157,7 @@ pub struct SavedSession {
 pub struct DirectoryEntry {
     pub name: String,
     pub path: String,
+    pub is_directory: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -293,7 +294,7 @@ pub enum Message {
         path: String,
         parent: Option<String>,
         home: String,
-        directories: Vec<DirectoryEntry>,
+        entries: Vec<DirectoryEntry>,
         next_cursor: Option<String>,
     },
     LaunchSession {

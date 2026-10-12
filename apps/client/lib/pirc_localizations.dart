@@ -449,7 +449,7 @@ extension PircLocalization on BuildContext {
         l10n.absoluteDirectoryRequired,
       "Directory path is too long. Choose another location." =>
         l10n.directoryPathTooLong,
-      "Too many folders in this directory. Enter a more specific path." =>
+      "Too many entries in this directory. Enter a more specific path." =>
         l10n.tooManyFolders,
       "Directory access is not allowed. On the device, open System Settings \u2192 Privacy & Security \u2192 Files and Folders and grant access to the server application, or choose another directory." =>
         l10n.macDirectoryPermission,

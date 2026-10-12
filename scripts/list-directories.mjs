@@ -45,29 +45,32 @@ async function browse() {
     await mkdir(target);
     return { type: "directory_created", path: target };
   }
-  const names = [];
+  const entries = [];
   const dir = await opendir(folder);
   for await (const entry of dir) {
-    if (
-      entry.isDirectory() &&
-      (hidden === "true" || !entry.name.startsWith("."))
-    )
-      names.push(entry.name);
-    if (names.length > 100_000)
+    if (hidden === "true" || !entry.name.startsWith(".")) {
+      entries.push({
+        name: entry.name,
+        path: path.join(folder, entry.name),
+        is_directory: entry.isDirectory(),
+      });
+    }
+    if (entries.length > 100_000)
       return fail(
         "DIRECTORY_TOO_LARGE",
-        "Too many folders in this directory. Enter a more specific path.",
+        "Too many entries in this directory. Enter a more specific path.",
       );
   }
-  names.sort();
-  const candidates = names.filter((name) => !cursor || name > cursor);
-  const directories = [];
+  // The cursor includes the group so pagination stays stable with folders first.
+  const key = (entry) => `${entry.is_directory ? "0" : "1"}/${entry.name}`;
+  entries.sort((a, b) => key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0);
+  const candidates = entries.filter((entry) => !cursor || key(entry) > cursor);
+  const page = [];
   let bytes = 0;
-  for (const name of candidates) {
-    const entry = { name, path: path.join(folder, name) };
+  for (const entry of candidates) {
     bytes += Buffer.byteLength(JSON.stringify(entry));
-    if (directories.length >= 200 || bytes > 512 * 1024) break;
-    directories.push(entry);
+    if (page.length >= 200 || bytes > 512 * 1024) break;
+    page.push(entry);
   }
   const parent = path.dirname(folder);
   return {
@@ -75,9 +78,9 @@ async function browse() {
     path: folder,
     parent: parent === folder ? null : parent,
     home,
-    directories,
+    entries: page,
     next_cursor:
-      directories.length < candidates.length ? directories.at(-1).name : null,
+      page.length < candidates.length ? key(page.at(-1)) : null,
   };
 }
 try {

@@ -56,6 +56,7 @@ class DirectoryController extends PircController {
 RemoteDirectoryPage listing(
   String path, {
   List<String> names = const [],
+  List<String> files = const [],
   String? cursor,
 }) => RemoteDirectoryPage({
   'path': path,
@@ -66,9 +67,14 @@ RemoteDirectoryPage listing(
       : path.substring(0, path.lastIndexOf('/')),
   'home': '/remote/home',
   'next_cursor': cursor,
-  'directories': names
-      .map((name) => {'name': name, 'path': '$path/$name'})
-      .toList(),
+  'entries': [
+    ...names.map(
+      (name) => {'name': name, 'path': '$path/$name', 'is_directory': true},
+    ),
+    ...files.map(
+      (name) => {'name': name, 'path': '$path/$name', 'is_directory': false},
+    ),
+  ],
 });
 
 Future<void> settle(WidgetTester tester) async {
@@ -82,6 +88,55 @@ String? currentDirectory(WidgetTester tester) => tester
     .value;
 
 void main() {
+  testWidgets(
+    'files identify the directory but cannot navigate or be selected',
+    (tester) async {
+      final model = DirectoryController();
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: pircTheme(),
+          home: RemoteDirectoryPicker(model: model, initialPath: '/project'),
+        ),
+      );
+      model.calls.single.reply.complete(
+        listing(
+          '/project',
+          names: ['src'],
+          files: ['README.md', 'package.json'],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('README.md'), findsOneWidget);
+      expect(find.byIcon(LucideIcons.file), findsNWidgets(2));
+      final file = find.byKey(const ValueKey('directory:/project/README.md'));
+      expect(tester.widget<InkWell>(file).onTap, isNull);
+      await tester.tap(file);
+      await tester.pump();
+      expect(model.calls.length, 1);
+      expect(currentDirectory(tester), '/project');
+      expect(
+        tester
+            .widget<FilledButton>(find.byKey(const Key('directory-select')))
+            .onPressed,
+        isNotNull,
+      );
+      await tester.tap(find.byKey(const ValueKey('directory:/project/src')));
+      await tester.pump();
+      expect(model.calls.last.path, '/project/src');
+      model.calls.last.reply.complete(
+        listing('/project/src', files: ['main.dart']),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('main.dart'), findsOneWidget);
+      expect(find.text('This directory is empty.'), findsNothing);
+      await tester.pumpWidget(const SizedBox());
+      model.dispose();
+    },
+  );
+
   testWidgets(
     'current directory edits inline and failed navigation leaves ancestors usable',
     (tester) async {

@@ -10,6 +10,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'pirc_controller.dart';
 import 'pirc_theme.dart';
+import 'pirc_loading.dart';
 
 // This page queries the selected computer; no native local/desktop file dialog.
 class RemoteDirectoryPicker extends StatefulWidget {
@@ -34,7 +35,7 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
   bool editingPath = false;
   String location = '';
   RemoteDirectoryPage? page;
-  List<RemoteDirectory> directories = [];
+  List<RemoteDirectoryEntry> entries = [];
   bool loading = true;
   bool more = false;
   bool showHidden = false;
@@ -117,9 +118,7 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
           );
       if (!mounted || revision != current) return;
       setState(() {
-        directories = append
-            ? [...directories, ...result.directories]
-            : result.directories;
+        entries = append ? [...entries, ...result.entries] : result.entries;
         page = result;
         // A reply arriving while the user types must not replace the draft.
         if (!editingPath) path.text = result.path;
@@ -429,24 +428,20 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                             ),
                           ),
                         if (loading)
-                          SliverToBoxAdapter(
-                            child: Padding(
-                              padding: const EdgeInsets.all(PircSpacing.s24),
-                              child: Column(
-                                children: [
-                                  const CircularProgressIndicator(
-                                    key: Key('directory-loading'),
-                                  ),
-                                  const SizedBox(height: PircSpacing.s12),
-                                  Text(
-                                    context.l10n.readingDirectory,
-                                    style: context.pircText.hint,
-                                  ),
-                                ],
+                          SliverFillRemaining(
+                            hasScrollBody: false,
+                            child: Center(
+                              child: Padding(
+                                padding: const EdgeInsets.all(PircSpacing.s24),
+                                child: PircLoading(
+                                  key: const Key('directory-loading'),
+                                  title: context.l10n.readingDirectory,
+                                  compact: true,
+                                ),
                               ),
                             ),
                           )
-                        else if (error == null && directories.isEmpty)
+                        else if (error == null && entries.isEmpty)
                           SliverToBoxAdapter(
                             child: Padding(
                               padding: const EdgeInsets.all(PircSpacing.s24),
@@ -466,12 +461,12 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                               PircSpacing.s12,
                             ),
                             sliver: SliverList.builder(
-                              itemCount: directories.length,
+                              itemCount: entries.length,
                               itemBuilder: (_, index) {
-                                final directory = directories[index];
+                                final directory = entries[index];
                                 return Semantics(
-                                  button: true,
-                                  enabled: connected,
+                                  button: directory.isDirectory,
+                                  enabled: connected && directory.isDirectory,
                                   child: Material(
                                     type: MaterialType.transparency,
                                     borderRadius: PircRadii.notice,
@@ -480,7 +475,7 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                                       key: ValueKey(
                                         'directory:${directory.path}',
                                       ),
-                                      onTap: connected
+                                      onTap: connected && directory.isDirectory
                                           ? () => read(directory.path)
                                           : null,
                                       child: ConstrainedBox(
@@ -495,9 +490,14 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                                           child: Row(
                                             children: [
                                               Icon(
-                                                LucideIcons.folder,
-                                                color:
-                                                    context.pircColors.primary,
+                                                directory.isDirectory
+                                                    ? LucideIcons.folder
+                                                    : LucideIcons.file,
+                                                color: directory.isDirectory
+                                                    ? context.pircColors.primary
+                                                    : context
+                                                          .pircColors
+                                                          .onSurfaceVariant,
                                                 size: PircIconSizes.toolbar,
                                               ),
                                               const SizedBox(
@@ -509,19 +509,27 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                                                   maxLines: 2,
                                                   overflow:
                                                       TextOverflow.ellipsis,
-                                                  style: context.pircText.body,
+                                                  style: directory.isDirectory
+                                                      ? context.pircText.body
+                                                      : context.pircText.body
+                                                            .copyWith(
+                                                              color: context
+                                                                  .pircColors
+                                                                  .onSurfaceVariant,
+                                                            ),
                                                 ),
                                               ),
                                               const SizedBox(
                                                 width: PircSpacing.s8,
                                               ),
-                                              Icon(
-                                                LucideIcons.chevronRight,
-                                                color: context
-                                                    .pircColors
-                                                    .onSurfaceVariant,
-                                                size: PircIconSizes.chevron,
-                                              ),
+                                              if (directory.isDirectory)
+                                                Icon(
+                                                  LucideIcons.chevronRight,
+                                                  color: context
+                                                      .pircColors
+                                                      .onSurfaceVariant,
+                                                  size: PircIconSizes.chevron,
+                                                ),
                                             ],
                                           ),
                                         ),
@@ -540,7 +548,10 @@ class _RemoteDirectoryPickerState extends State<RemoteDirectoryPicker> {
                               padding: const EdgeInsets.all(PircSpacing.s16),
                               child: Center(
                                 child: more
-                                    ? const CircularProgressIndicator()
+                                    ? PircLoading(
+                                        title: context.l10n.readingDirectory,
+                                        compact: true,
+                                      )
                                     : TextButton(
                                         key: const Key('directory-more'),
                                         onPressed: connected
@@ -838,78 +849,107 @@ class _NewDirectoryDialogState extends State<_NewDirectoryDialog> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-    scrollable: true,
-    title: Text(context.l10n.newFolder),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(
-          widget.parent,
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          style: context.pircText.path,
-        ),
-        const SizedBox(height: PircSpacing.s12),
-        TextField(
-          key: const Key('directory-new-name'),
-          controller: name,
-          autofocus: true,
-          enabled: !creating,
-          decoration: InputDecoration(
-            labelText: context.l10n.folderName,
-            errorText: edited && _directoryNameError(name.text) != null
-                ? context.localize(_directoryNameError(name.text)!)
-                : null,
-            errorMaxLines: 3,
-          ),
-          textInputAction: TextInputAction.done,
-          onChanged: (_) => setState(() {
-            edited = true;
-            error = null;
-          }),
-          onSubmitted: (_) => create(),
-        ),
-        if (error != null) ...[
-          const SizedBox(height: PircSpacing.s12),
-          Text(
-            context.localize(error!),
-            key: const Key('directory-create-error'),
-            style: context.pircText.hint.copyWith(color: context.pirc.warning),
-          ),
-        ],
-      ],
-    ),
-    actions: [
-      TextButton(
-        key: const Key('directory-create-cancel'),
-        onPressed: () => Navigator.pop(context),
-        child: Text(creating ? context.l10n.close : context.l10n.cancel),
-      ),
-      FilledButton(
-        key: const Key('directory-create-confirm'),
-        onPressed: !creating && _directoryNameError(name.text) == null
-            ? create
-            : null,
-        child: creating
-            ? Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    key: Key('directory-creating'),
-                    width: PircIconSizes.small,
-                    height: PircIconSizes.small,
-                    child: CircularProgressIndicator(
-                      strokeWidth: PircLayout.loadingStrokeWidth,
+  Widget build(BuildContext context) => Dialog(
+    key: const Key('directory-new-dialog'),
+    shape: const RoundedRectangleBorder(borderRadius: PircRadii.connection),
+    child: SizedBox(
+      width: PircLayout.dialogWidth,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(PircSpacing.s24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(context.l10n.newFolder, style: context.pircText.titleMedium),
+            const SizedBox(height: PircSpacing.s16),
+            Row(
+              children: [
+                Icon(
+                  LucideIcons.folder,
+                  size: PircIconSizes.small,
+                  color: context.pircColors.onSurfaceVariant,
+                ),
+                const SizedBox(width: PircSpacing.s8),
+                Expanded(
+                  child: Tooltip(
+                    message: widget.parent,
+                    child: Text(
+                      widget.parent,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: context.pircText.hint,
                     ),
                   ),
-                  SizedBox(width: PircSpacing.s8),
-                  Flexible(child: Text(context.l10n.creating)),
-                ],
-              )
-            : Text(context.l10n.createAndOpen),
+                ),
+              ],
+            ),
+            const SizedBox(height: PircSpacing.s16),
+            TextField(
+              key: const Key('directory-new-name'),
+              controller: name,
+              autofocus: true,
+              enabled: !creating,
+              decoration: InputDecoration(
+                hintText: context.l10n.folderName,
+                errorText: edited && _directoryNameError(name.text) != null
+                    ? context.localize(_directoryNameError(name.text)!)
+                    : null,
+                errorMaxLines: 3,
+              ),
+              textInputAction: TextInputAction.done,
+              onChanged: (_) => setState(() {
+                edited = true;
+                error = null;
+              }),
+              onSubmitted: (_) => create(),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: PircSpacing.s12),
+              Text(
+                context.localize(error!),
+                key: const Key('directory-create-error'),
+                style: context.pircText.hint.copyWith(
+                  color: context.pirc.warning,
+                ),
+              ),
+            ],
+            const SizedBox(height: PircSpacing.s18),
+            OverflowBar(
+              alignment: MainAxisAlignment.end,
+              spacing: PircSpacing.s8,
+              overflowSpacing: PircSpacing.s8,
+              children: [
+                TextButton(
+                  key: const Key('directory-create-cancel'),
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    creating ? context.l10n.close : context.l10n.cancel,
+                  ),
+                ),
+                FilledButton(
+                  key: const Key('directory-create-confirm'),
+                  onPressed: !creating && _directoryNameError(name.text) == null
+                      ? create
+                      : null,
+                  child: creating
+                      ? Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            PircLoadingMark(
+                              key: const Key('directory-creating'),
+                              color: context.pircColors.onPrimary,
+                            ),
+                            const SizedBox(width: PircSpacing.s8),
+                            Flexible(child: Text(context.l10n.creating)),
+                          ],
+                        )
+                      : Text(context.l10n.createAndOpen),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ],
+    ),
   );
 }

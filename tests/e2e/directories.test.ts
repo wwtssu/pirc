@@ -136,25 +136,27 @@ test(
       const first = await client.request(browse());
       assert.equal(first.path, home);
       assert.equal(first.parent, root);
-      assert.equal(first.directories.length, 200);
+      assert.equal(first.entries.length, 200);
       assert(
-        !first.directories.some((d: any) =>
+        !first.entries.some((d: any) =>
           [".hidden", "protected-link", "regular-file"].includes(d.name),
         ),
       );
       const next = await client.request(browse(home, first.next_cursor));
-      assert.equal(next.directories.length, 6);
+      assert.equal(next.entries.length, 8);
       assert.equal(next.next_cursor, null);
-      const all = [...first.directories, ...next.directories];
-      assert.equal(new Set(all.map((d) => d.path)).size, 206);
+      const all = [...first.entries, ...next.entries];
+      assert.equal(new Set(all.map((d) => d.path)).size, 208);
+      assert(all.slice(0, 206).every((d) => d.is_directory));
+      assert.deepEqual(all.slice(206).map((d) => [d.name, d.is_directory]), [["protected-link", false], ["regular-file", false]]);
       const special = all.find((d) => d.name.startsWith("café"));
       assert(special);
       assert.equal(
-        (await client.request(browse(special.path))).directories.length,
+        (await client.request(browse(special.path))).entries.length,
         0,
       );
       const hidden = await client.request(browse("~", null, true));
-      assert(hidden.directories.some((d: any) => d.name === ".hidden"));
+      assert(hidden.entries.some((d: any) => d.name === ".hidden"));
       const createdName = "New project café '$(touch nope)";
       const created = await client.request(create(home, createdName));
       assert.deepEqual(created, {
@@ -163,7 +165,7 @@ test(
       });
       assert(statSync(created.path).isDirectory());
       assert.equal(
-        (await client.request(browse(created.path))).directories.length,
+        (await client.request(browse(created.path))).entries.length,
         0,
       );
       assert.equal(

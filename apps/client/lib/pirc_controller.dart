@@ -90,12 +90,14 @@ class SavedSessionCatalog {
   final String defaultCwd;
 }
 
-class RemoteDirectory {
-  RemoteDirectory(Map<String, dynamic> json)
+class RemoteDirectoryEntry {
+  RemoteDirectoryEntry(Map<String, dynamic> json)
     : name = json['name'] as String,
-      path = json['path'] as String;
+      path = json['path'] as String,
+      isDirectory = json['is_directory'] as bool;
   final String name;
   final String path;
+  final bool isDirectory;
 }
 
 class RemoteDirectoryPage {
@@ -103,14 +105,14 @@ class RemoteDirectoryPage {
     : path = json['path'] as String,
       parent = json['parent'] as String?,
       home = json['home'] as String,
-      directories = (json['directories'] as List)
-          .map((d) => RemoteDirectory((d as Map).cast<String, dynamic>()))
+      entries = (json['entries'] as List)
+          .map((d) => RemoteDirectoryEntry((d as Map).cast<String, dynamic>()))
           .toList(),
       nextCursor = json['next_cursor'] as String?;
   final String path;
   final String? parent;
   final String home;
-  final List<RemoteDirectory> directories;
+  final List<RemoteDirectoryEntry> entries;
   final String? nextCursor;
 }
 
