@@ -1,0 +1,1487 @@
+{
+  "$defs": {
+    "BuiltinCommand": {
+      "enum": [
+        "model",
+        "thinking",
+        "name",
+        "session",
+        "compact"
+      ],
+      "type": "string"
+    },
+    "CommandData": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "current": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/ModelInfo"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "const": "model",
+              "type": "string"
+            },
+            "models": {
+              "items": {
+                "$ref": "#/$defs/ModelInfo"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "models"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "thinking",
+              "type": "string"
+            },
+            "level": {
+              "type": "string"
+            },
+            "levels": {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            }
+          },
+          "required": [
+            "kind",
+            "level",
+            "levels"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "name",
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "info": {
+              "$ref": "#/$defs/SessionInfo"
+            },
+            "kind": {
+              "const": "session",
+              "type": "string"
+            }
+          },
+          "required": [
+            "kind",
+            "info"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "kind": {
+              "const": "compact",
+              "type": "string"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "tokens_before": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "summary",
+            "tokens_before"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "CommandStatus": {
+      "enum": [
+        "accepted",
+        "completed",
+        "rejected"
+      ],
+      "type": "string"
+    },
+    "DirectoryEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "path"
+      ],
+      "type": "object"
+    },
+    "EventData": {
+      "additionalProperties": false,
+      "properties": {
+        "content_index": {
+          "description": "Stable content block position within an assistant message.",
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/EventKind"
+        },
+        "message_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tool_call_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tool_name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kind",
+        "is_error",
+        "truncated"
+      ],
+      "type": "object"
+    },
+    "EventKind": {
+      "enum": [
+        "agent_start",
+        "agent_settled",
+        "user_message",
+        "message_start",
+        "text_start",
+        "message_delta",
+        "text_end",
+        "thinking_start",
+        "thinking_delta",
+        "thinking_end",
+        "tool_call_start",
+        "tool_call_delta",
+        "tool_call_end",
+        "message_end",
+        "tool_start",
+        "tool_update",
+        "tool_end",
+        "error"
+      ],
+      "type": "string"
+    },
+    "HistoryDirection": {
+      "enum": [
+        "latest",
+        "before",
+        "after",
+        "around"
+      ],
+      "type": "string"
+    },
+    "Message": {
+      "oneOf": [
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "pairing_request",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "expires_in": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "pairing_required",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "code",
+            "expires_in"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "pairing_approved",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "auth",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "generation_id": {
+              "type": "string"
+            },
+            "history_paging": {
+              "type": "boolean"
+            },
+            "server_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "const": "welcome",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "session": {
+              "$ref": "#/$defs/SessionSnapshot"
+            },
+            "type": {
+              "const": "register",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "session": {
+              "$ref": "#/$defs/SessionSnapshot"
+            },
+            "type": {
+              "const": "snapshot",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "session": {
+              "$ref": "#/$defs/SessionSnapshot"
+            },
+            "source_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "heartbeat",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session",
+            "source_seq"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "unregister",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "sessions": {
+              "items": {
+                "$ref": "#/$defs/SessionSnapshot"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "sessions",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "sessions"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "type": {
+              "const": "saved_sessions",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "default_cwd": {
+              "type": "string"
+            },
+            "sessions": {
+              "items": {
+                "$ref": "#/$defs/SavedSession"
+              },
+              "type": "array"
+            },
+            "type": {
+              "const": "saved_session_list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "sessions",
+            "default_cwd"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cursor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "show_hidden": {
+              "default": false,
+              "type": "boolean"
+            },
+            "type": {
+              "const": "browse_directories",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "parent": {
+              "type": "string"
+            },
+            "type": {
+              "const": "create_directory",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "parent",
+            "name"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "directory_created",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "directories": {
+              "items": {
+                "$ref": "#/$defs/DirectoryEntry"
+              },
+              "type": "array"
+            },
+            "home": {
+              "type": "string"
+            },
+            "next_cursor": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "parent": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "directory_list",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path",
+            "home",
+            "directories"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cwd": {
+              "type": "string"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "session_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "const": "launch_session",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "cwd"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "launch_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "session_launched",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "launch_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "after_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "replay",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "after_seq"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "last_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "replay_end",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "last_seq"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "cursor": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": [
+                "integer",
+                "null"
+              ]
+            },
+            "direction": {
+              "$ref": "#/$defs/HistoryDirection"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "limit": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "history",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "direction",
+            "limit"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "has_after": {
+              "type": "boolean"
+            },
+            "has_before": {
+              "type": "boolean"
+            },
+            "history_truncated": {
+              "description": "The retained range may start after records that were discarded.",
+              "type": "boolean"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "items": {
+              "items": {
+                "$ref": "#/$defs/TranscriptItem"
+              },
+              "type": "array"
+            },
+            "last_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "source_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "history_page",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "items",
+            "has_before",
+            "has_after",
+            "last_seq",
+            "source_seq",
+            "history_truncated"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "event": {
+              "$ref": "#/$defs/EventData"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "source_seq": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "event",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "source_seq",
+            "seq",
+            "event"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "instance_id": {
+              "type": "string"
+            },
+            "reason": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "gap",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "reason"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "stop",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "expected_revision": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "close_session",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "expected_revision"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "expected_revision": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "text": {
+              "type": "string"
+            },
+            "type": {
+              "const": "prompt",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "expected_revision",
+            "text"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "args": {
+              "type": "string"
+            },
+            "command": {
+              "$ref": "#/$defs/BuiltinCommand"
+            },
+            "expected_revision": {
+              "format": "uint64",
+              "maximum": 9007199254740991,
+              "minimum": 0,
+              "type": "integer"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "builtin",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "expected_revision",
+            "command",
+            "args"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "data": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/CommandData"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "detail": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "status": {
+              "$ref": "#/$defs/CommandStatus"
+            },
+            "type": {
+              "const": "command_result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "session_id",
+            "instance_id",
+            "status"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "command_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "get_result",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "command_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "code": {
+              "type": "string"
+            },
+            "detail": {
+              "type": "string"
+            },
+            "type": {
+              "const": "error",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "code",
+            "detail"
+          ],
+          "type": "object"
+        }
+      ]
+    },
+    "ModelInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "context_window": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "provider": {
+          "type": "string"
+        },
+        "reasoning": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "provider",
+        "id",
+        "name",
+        "reasoning",
+        "context_window"
+      ],
+      "type": "object"
+    },
+    "SavedSession": {
+      "additionalProperties": false,
+      "properties": {
+        "cwd": {
+          "type": "string"
+        },
+        "modified_ms": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "session_id",
+        "cwd",
+        "modified_ms"
+      ],
+      "type": "object"
+    },
+    "SessionControls": {
+      "additionalProperties": false,
+      "properties": {
+        "compacting": {
+          "type": "boolean"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "thinking_level": {
+          "type": "string"
+        },
+        "thinking_levels": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "thinking_level",
+        "thinking_levels",
+        "compacting"
+      ],
+      "type": "object"
+    },
+    "SessionInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "assistant_messages": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_read_tokens": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cache_write_tokens": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "context_tokens": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "context_window": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "cost_usd": {
+          "type": "string"
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "input_tokens": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "output_tokens": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_file": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "tool_calls": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "tool_results": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "total_messages": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        },
+        "user_messages": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "session_id",
+        "cwd",
+        "user_messages",
+        "assistant_messages",
+        "tool_calls",
+        "tool_results",
+        "total_messages",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens",
+        "cost_usd",
+        "context_window"
+      ],
+      "type": "object"
+    },
+    "SessionSnapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "can_close": {
+          "description": "Extension supports graceful exit for this Server-launched terminal.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "controls": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionControls"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cwd": {
+          "type": "string"
+        },
+        "instance_id": {
+          "type": "string"
+        },
+        "launch_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "needs_local_attention": {
+          "type": "boolean"
+        },
+        "revision": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "session_id": {
+          "type": "string"
+        },
+        "slash_commands": {
+          "default": null,
+          "items": {
+            "$ref": "#/$defs/SlashCommand"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
+        "state": {
+          "$ref": "#/$defs/SessionState"
+        }
+      },
+      "required": [
+        "session_id",
+        "instance_id",
+        "cwd",
+        "state",
+        "revision",
+        "needs_local_attention"
+      ],
+      "type": "object"
+    },
+    "SessionState": {
+      "enum": [
+        "idle",
+        "running",
+        "stopping",
+        "offline"
+      ],
+      "type": "string"
+    },
+    "SlashCommand": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "source"
+      ],
+      "type": "object"
+    },
+    "TranscriptItem": {
+      "additionalProperties": false,
+      "description": "A materialized content block. Pages never split its stream of deltas.",
+      "properties": {
+        "arguments": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "complete": {
+          "type": "boolean"
+        },
+        "content_index": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "first_seq": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "is_error": {
+          "type": "boolean"
+        },
+        "last_seq": {
+          "format": "uint64",
+          "maximum": 9007199254740991,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "message_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "phase": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "role": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tool_call_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "role",
+        "text",
+        "complete",
+        "is_error",
+        "truncated",
+        "first_seq",
+        "last_seq"
+      ],
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "message": {
+      "$ref": "#/$defs/Message"
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "version": {
+      "format": "uint32",
+      "minimum": 0,
+      "type": "integer"
+    }
+  },
+  "required": [
+    "version",
+    "request_id",
+    "message"
+  ],
+  "title": "Envelope",
+  "type": "object"
+}

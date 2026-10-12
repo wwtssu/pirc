@@ -1,0 +1,18 @@
+[package]
+license.workspace = true
+name = "pirc-server"
+default-run = "pirc-server"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+pirc-crypto = { path = "../../packages/crypto" }
+pirc-protocol = { path = "../../packages/protocol" }
+pirc-core = { path = "../../packages/core" }
+serde_json.workspace = true
+serde.workspace = true
+sha2 = "0.10"
+tokio = { version = "1", features = ["full"] }
+axum = { version = "0.8", features = ["ws"] }
+uuid = { version = "1", features = ["v4"] }

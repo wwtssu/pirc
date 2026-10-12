@@ -1,0 +1,12 @@
+[package]
+license.workspace = true
+name = "pirc-protocol"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+schemars = "1"
+ts-rs = { version = "11", features = ["serde-compat", "no-serde-warnings"] }

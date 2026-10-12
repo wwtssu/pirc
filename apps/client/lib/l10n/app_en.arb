@@ -1,0 +1,467 @@
+{
+  "@@locale": "en",
+  "deviceAlreadyNamed": "This device is already saved as {name}. Use the existing connection.",
+  "@deviceAlreadyNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "savedDevicesUnreadable": "Unable to read saved devices. Add them again.",
+  "duplicateConnectionAddress": "Duplicate connection address",
+  "deviceSaveFailed": "Unable to save device settings",
+  "loadingRecords": "Loading messages…",
+  "historyRetry": "{error} · Retry",
+  "@historyRetry": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "loadEarlierRecords": "Load earlier messages",
+  "loadLaterRecords": "Load newer messages",
+  "earliestRetainedRecord": "Beginning of retained history",
+  "earliestRecord": "Beginning of conversation",
+  "loadingSession": "Loading conversation…",
+  "jumpToLatest": "Jump to latest",
+  "currentDevice": "Current device",
+  "creatingConversation": "Creating conversation",
+  "restoringConversation": "Restoring conversation",
+  "waitingForNewSession": "Opening terminal and waiting for the session…",
+  "waitingForRestoredSession": "Restoring conversation and waiting for the session…",
+  "sessionNotConfirmed": "Session could not be confirmed",
+  "gotIt": "OK",
+  "launchTimedOut": "Timed out waiting for the session. The terminal may already be open. Check the device and refresh the session list before creating another session.",
+  "back": "Back",
+  "newConversation": "New conversation",
+  "startConversation": "Start a conversation",
+  "chooseDirectoryDescription": "Choose a working directory on the device to start a conversation.",
+  "workingDirectory": "Working directory",
+  "browseDeviceDirectories": "Browse device directories",
+  "createConversation": "Create conversation",
+  "restoreHistory": "Restore a conversation",
+  "refreshHistory": "Refresh history",
+  "restoreDescription": "Continue a saved conversation on the device.",
+  "searchHistory": "Search by name or directory",
+  "loadingHistory": "Loading saved conversations",
+  "readingSavedConversations": "Reading conversations saved on the device",
+  "historyLoadFailed": "Unable to load history. Refresh to retry.",
+  "noMatchingHistory": "No matching conversations",
+  "noSavedHistory": "No saved conversations",
+  "newConversationName": "Conversation name",
+  "unnamedSession": "Unnamed session",
+  "cancel": "Cancel",
+  "create": "Create",
+  "connectedDevice": "Connected to device",
+  "connecting": "Connecting",
+  "syncing": "Syncing",
+  "reconnecting": "Reconnecting",
+  "awaitingApproval": "Awaiting server approval",
+  "connectionRejected": "Connection rejected",
+  "notConnected": "No device connected",
+  "tryingBackupAddress": "Trying another address",
+  "connectDeviceFirst": "Connect to a device first",
+  "connectionChanged": "The device connection changed. Try again.",
+  "directoryBrowsingUnsupported": "Update the device server to browse directories.",
+  "directoryConnectionChanged": "The device connection changed. Creation is unconfirmed. Refresh the directory before retrying.",
+  "directoryCreationUnconfirmed": "Creation is unconfirmed. Refresh the directory to check.",
+  "launchRequestUnconfirmed": "The device did not confirm the request in time. The terminal may already be open. Check the device and refresh the session list before retrying.",
+  "launchConnectionLost": "The device connection was lost. Reconnect and refresh the session list to check whether it was restored.",
+  "sessionRegistrationTimedOut": "Timed out waiting for the session. Check the agent and connection on the device, then refresh the session list.",
+  "recordsLoadFailed": "Unable to load messages. Try again.",
+  "sessionEnded": "Session is offline",
+  "manualSessionExit": "This session was started on the device. Exit it on the device.",
+  "remoteExitUnsupported": "Remote exit is unavailable for this session. Exit it on the device.",
+  "waitForSessionSync": "Wait for the connection and session to sync, then retry.",
+  "sessionNeedsAttention": "This session needs attention on the device",
+  "previousOperationUnconfirmed": "The previous operation is unconfirmed. Check the device first.",
+  "stopBeforeExit": "A task is running. Stop it before exiting.",
+  "waitForIdleConnection": "Wait for the session to become idle and the connection to be confirmed.",
+  "operationIncomplete": "Operation incomplete. Check the session notice.",
+  "operationUnconfirmed": "Operation result unconfirmed. Check the session notice.",
+  "exitSessionQuestion": "Exit the session on the device?",
+  "exitSessionDescription": "Exit “{name}” and close its terminal window. History and drafts are kept. Restore it later from New conversation.",
+  "@exitSessionDescription": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "exitSession": "Exit session",
+  "sessionManagement": "Session management",
+  "closeMenu": "Close menu",
+  "exiting": "Exiting…",
+  "exitPendingDescription": "Waiting for the device. History and drafts are kept.",
+  "exitActionDescription": "Exit the process and close the terminal. Keep history and drafts.",
+  "idle": "Idle",
+  "running": "Running",
+  "stopping": "Stopping",
+  "offline": "Offline",
+  "stateUnconfirmed": "State unconfirmed",
+  "awaitingExit": "Awaiting exit confirmation",
+  "awaitingStop": "Awaiting stop confirmation",
+  "awaitingCommand": "Awaiting command receipt",
+  "exitingAwaitingDevice": "Exiting; waiting for the device",
+  "stoppingAwaitingIdle": "Stopping; send when idle is confirmed",
+  "commandReceived": "Command received",
+  "sessionExited": "Session exited",
+  "stopConfirmed": "Stop confirmed",
+  "terminalBusy": "The terminal started a task. Message not sent.",
+  "exitAwaitingConfirmation": "Exiting. Wait for confirmation.",
+  "sessionStateChanged": "Session state changed. Send again.",
+  "originalSessionOffline": "The original session is offline",
+  "localCommandRequired": "Run this command in the device terminal",
+  "modelNotFound": "Model not found. Select one from the list.",
+  "modelAuthRequired": "Set up authentication for this model on the device first.",
+  "checkTerminalOperation": "Operation incomplete. Check the device terminal.",
+  "selectModelFirst": "Select a model first",
+  "sendFailed": "Unable to send. Check the terminal.",
+  "checkTerminalResult": "Result unconfirmed. Check the terminal first.",
+  "terminalResultConfirmed": "Terminal result confirmed",
+  "approveClientTitle": "Approve client connection",
+  "approveClientDescription": "Run this command on the server to approve this client:",
+  "pairingCodeExpiry": "Pairing code expires in 5 minutes",
+  "copyCommand": "Copy command",
+  "sessions": "Sessions",
+  "syncingSessions": "Syncing sessions…",
+  "viewDeviceSessions": "View sessions on your device",
+  "noOnlineSessions": "No active sessions",
+  "connectToViewSessions": "Connect a device to view and control its sessions.",
+  "noSessionsDescription": "Create a conversation or restore one from history. You can also start an agent in the device terminal.",
+  "restoringConnection": "Restoring connection",
+  "refresh": "Refresh",
+  "retry": "Retry",
+  "addDevice": "Add device",
+  "waitingForConnection": "Waiting for connection",
+  "waitingForTerminal": "Waiting for terminal confirmation",
+  "waitingForConfirmation": "Waiting for confirmation",
+  "stop": "Stop",
+  "send": "Send",
+  "compactContext": "Compact context",
+  "checkDeviceResult": "Result unconfirmed. Check the device terminal.",
+  "backToSessions": "Back to sessions",
+  "sessionNameTooltip": "Session name: {name}",
+  "@sessionNameTooltip": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "compacting": "Compacting",
+  "completeOnTerminal": "Complete the operation in the device terminal",
+  "incompleteConversation": "Some messages are missing. This conversation may be incomplete.",
+  "sessionOffline": "Session is offline",
+  "continueConversation": "Continue the conversation",
+  "reopenSessionDescription": "Reopen the session on the device to continue.",
+  "continueDescription": "Send a message below to continue this session.",
+  "confirmedOnTerminal": "Confirmed in terminal",
+  "deviceCommand": "/{command} · On device",
+  "@deviceCommand": {
+    "placeholders": {
+      "command": {
+        "type": "String"
+      }
+    }
+  },
+  "messageHint": "Message…",
+  "generatingArguments": "Generating arguments",
+  "waitingToRun": "Waiting to run",
+  "completed": "Completed",
+  "failed": "Failed",
+  "stopped": "Stopped",
+  "resultPending": "Result pending",
+  "thinking": "Thinking",
+  "toolPhase": "{tool} · {phase}",
+  "@toolPhase": {
+    "placeholders": {
+      "tool": {
+        "type": "String"
+      },
+      "phase": {
+        "type": "String"
+      }
+    }
+  },
+  "executionIncomplete": "Execution incomplete. Check the device terminal.",
+  "contentTruncated": "Content truncated",
+  "arguments": "Arguments",
+  "output": "Output",
+  "waitingForResponse": "Waiting for response…",
+  "enterAddress": "Enter an address",
+  "invalidAddress": "Enter a valid IP, hostname, or service address",
+  "duplicateAddress": "Duplicate address",
+  "addressOwnedByOtherDevice": "This address belongs to another device",
+  "connectionSettings": "Connection settings",
+  "deviceNameOptional": "Device name (optional)",
+  "primaryAddress": "Primary address",
+  "backupAddress": "Alternative address {index}",
+  "@backupAddress": {
+    "placeholders": {
+      "index": {
+        "type": "String"
+      }
+    }
+  },
+  "moveUp": "Move up",
+  "moveDown": "Move down",
+  "removeAddress": "Remove address",
+  "addBackupAddress": "Add alternative address",
+  "rebindDeviceQuestion": "Rebind this device?",
+  "rebindDeviceDescription": "Saving will verify the device for these addresses again. Make sure all addresses point to the same device.",
+  "rebind": "Rebind",
+  "saveAndRebind": "Save and rebind",
+  "rebindDevice": "Rebind device",
+  "add": "Add",
+  "save": "Save",
+  "deviceDisconnected": "Device disconnected. Reconnect and try again.",
+  "directoryReadTimedOut": "Reading the directory timed out. Retry or choose another directory.",
+  "cancelSelection": "Cancel selection",
+  "chooseWorkingDirectory": "Choose working directory",
+  "newFolder": "New folder",
+  "hideHiddenFolders": "Hide hidden folders",
+  "showHiddenFolders": "Show hidden folders",
+  "enterFullPath": "Enter full path",
+  "goToDirectory": "Go to directory",
+  "readingDirectory": "Reading directory…",
+  "noSubdirectories": "No subfolders. You can use this directory.",
+  "loadMoreFolders": "Load more folders",
+  "useDirectory": "Use this directory",
+  "homeDirectory": "Home directory",
+  "currentDirectory": "Current directory",
+  "enterFolderName": "Enter a folder name",
+  "invalidFolderName": "Enter a single name without / or backslash",
+  "folderNameTooLong": "Name is too long. Shorten it and retry.",
+  "folderCreationUnconfirmed": "Creation is unconfirmed. Close and refresh the directory before retrying.",
+  "folderName": "Folder name",
+  "close": "Close",
+  "creating": "Creating…",
+  "createAndOpen": "Create and open",
+  "notSynced": "Not synced",
+  "notSelected": "Not selected",
+  "currentModel": "Current model: {model}",
+  "@currentModel": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      }
+    }
+  },
+  "currentModelDetails": "Current model: {model}\n{provider}/{id}",
+  "@currentModelDetails": {
+    "placeholders": {
+      "model": {
+        "type": "String"
+      },
+      "provider": {
+        "type": "String"
+      },
+      "id": {
+        "type": "String"
+      }
+    }
+  },
+  "thinkingNotSynced": "Thinking level not synced",
+  "currentThinking": "Current thinking level: {level}",
+  "@currentThinking": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "selectModel": "Select model",
+  "thinkingLevel": "Thinking level",
+  "sessionName": "Session name",
+  "sessionInfo": "Session information",
+  "searchModels": "Search models",
+  "noModelsAvailable": "No models available. Set up authentication on the device.",
+  "noMatchingModels": "No matching models",
+  "enterSessionName": "Enter session name",
+  "name": "Name",
+  "unnamed": "Unnamed",
+  "model": "Model",
+  "context": "Context",
+  "waitingForNextResponse": "Updates after the next response",
+  "messages": "Messages",
+  "messageCounts": "{total} · User {user} · Assistant {assistant}",
+  "@messageCounts": {
+    "placeholders": {
+      "total": {
+        "type": "String"
+      },
+      "user": {
+        "type": "String"
+      },
+      "assistant": {
+        "type": "String"
+      }
+    }
+  },
+  "tools": "Tools",
+  "toolCounts": "Calls: {calls} · Results: {results}",
+  "@toolCounts": {
+    "placeholders": {
+      "calls": {
+        "type": "String"
+      },
+      "results": {
+        "type": "String"
+      }
+    }
+  },
+  "inputTokens": "Input tokens",
+  "outputTokens": "Output tokens",
+  "cacheReadTokens": "Cache read tokens",
+  "cacheWriteTokens": "Cache write tokens",
+  "costUsd": "Cost (USD)",
+  "sessionId": "Session ID",
+  "sessionFile": "Session file",
+  "openDeviceList": "Open device list",
+  "devices": "Devices",
+  "language": "Language",
+  "systemLanguage": "System default",
+  "englishLanguage": "English",
+  "chineseLanguage": "Chinese",
+  "japaneseLanguage": "Japanese",
+  "keyGenerationFailed": "Unable to generate encryption keys",
+  "invalidEncryptionKey": "Invalid encryption key",
+  "handshakeInitializationFailed": "Unable to initialize the encrypted handshake",
+  "handshakeIncomplete": "Encrypted handshake is incomplete",
+  "messageTooLarge": "Message is too large",
+  "encryptionFailed": "Unable to encrypt message",
+  "encryptedMessageTooLarge": "Encrypted message is too large",
+  "encryptedMessageIncomplete": "Encrypted message is incomplete",
+  "encryptedMessageInvalid": "Invalid encrypted message",
+  "encryptionVerificationFailed": "Encryption verification failed. Connection stopped.",
+  "encryptedEncodingInvalid": "Invalid encrypted message encoding",
+  "waitForReconnection": "Wait for the connection to recover, then retry.",
+  "directoryCreationCheck": "Creation is unconfirmed. Refresh the directory before retrying.",
+  "launchInterrupted": "Connection lost. If the terminal opened, wait for the session rather than creating another one.",
+  "directoryInterrupted": "Connection lost. Creation is unconfirmed. Reconnect and refresh the directory before retrying.",
+  "connectionLostRetry": "Device disconnected. Reconnect and try again.",
+  "connectionClosed": "Connection closed",
+  "addressRequired": "Enter at least one connection address",
+  "invalidAddressList": "Address list is empty or contains duplicates",
+  "connectionUpdateFailed": "Unable to update connection settings",
+  "checkConnectionSettings": "Check connection settings and reconnect",
+  "connectingDevice": "Connecting to device",
+  "deviceKeyChanged": "Device encryption key changed. Connection stopped. Verify the device before pairing again.",
+  "approvalRequired": "Wait for server approval, then retry.",
+  "connectionLost": "Connection lost",
+  "pairingCodeMismatch": "Pairing code does not match the encrypted handshake. Connection stopped.",
+  "invalidApprovalState": "Invalid server approval state. Reconnect to retry.",
+  "deviceHandshakeMismatch": "Device identity does not match the handshake. Check the address.",
+  "deviceIdentityUnconfirmed": "Server did not confirm device identity",
+  "pairingCodeExpired": "Pairing code expired. Reconnect to retry.",
+  "checkUnconfirmedOperation": "Operation result unconfirmed. Check the device terminal and refresh.",
+  "reconnectingWithoutResend": "Connection lost. Retrying without resending unconfirmed operations.",
+  "invalidConnectionAddress": "Invalid connection address",
+  "addressComponentsInvalid": "Connection addresses cannot contain credentials, query parameters, or fragments",
+  "httpUpgradeFailed": "Unable to create HTTP upgrade request",
+  "certificateInvalid": "Certificate verification failed. Check the HTTPS configuration.",
+  "addressUnavailable": "Address is temporarily unavailable",
+  "httpConnectionFailed": "Unable to establish an HTTP connection",
+  "httpAuthorizationRejected": "HTTP handshake authorization rejected. Check server authorization and reconnect.",
+  "serviceUnavailable": "Service temporarily unavailable",
+  "incompatibleService": "This address does not provide a compatible PiRC service",
+  "invalidDiscoveryResponse": "Invalid service discovery response",
+  "serverEncryptionRequired": "Update the device server to enable traffic encryption",
+  "invalidProtocolIdentity": "Unsupported protocol version or invalid device identity",
+  "deviceAlreadyAdded": "This device is already added. Use the existing connection.",
+  "differentDeviceAddress": "This address belongs to another device. Check connection settings.",
+  "encryptionNegotiationFailed": "Encryption protocol negotiation failed. Connection stopped.",
+  "tlsVerificationFailed": "TLS verification failed. Check the HTTPS configuration.",
+  "serverConnectionRejected": "Server rejected the connection. Check the address and protocol.",
+  "encryptionNotConfirmed": "Server did not confirm encryption. Connection stopped.",
+  "handshakeFailed": "Encrypted handshake failed",
+  "handshakeConnectionLost": "Encrypted handshake connection lost",
+  "handshakeVerificationFailed": "Encrypted handshake verification failed",
+  "handshakeIdentityMismatch": "Encrypted handshake device identity mismatch",
+  "publicKeyMissing": "Device did not provide a public key",
+  "encryptedHandshakeRequired": "Server did not use an encrypted handshake. Connection stopped.",
+  "plaintextRejected": "Received plaintext on the encrypted channel. Connection stopped.",
+  "historyServerUpdateRequired": "Update the device server to load history",
+  "sessionNotFound": "Session not found",
+  "recordsLoading": "Messages are loading",
+  "recordsLoadTimedOut": "Loading timed out. Try again.",
+  "retryAfterConnection": "Retry after the connection recovers",
+  "syncBufferFull": "Sync buffer is full. Some events are missing.",
+  "recordOutsideRetention": "This message is no longer retained",
+  "sessionSyncFailed": "Unable to sync this session. Reconnect.",
+  "connectionNotReady": "Connection has not recovered. Controls are unavailable.",
+  "sessionNotReady": "Session state is unconfirmed or needs attention in the terminal",
+  "previousTerminalOperationPending": "The previous operation is unconfirmed. Check the terminal first.",
+  "connectionIdentityUnconfirmed": "Connection identity is unconfirmed",
+  "idleRequiredToSend": "Wait for confirmed idle state before sending",
+  "messageRequired": "Enter a message of at most 64 KiB",
+  "builtinSupportUnavailable": "Built-in command support is unavailable. Reload the adapter on the device.",
+  "incompleteRecords": "Some events are missing. History may be incomplete.",
+  "olderRecordsReleased": "Older local messages have been released",
+  "folderNameRequirements": "Enter a single folder name without / or backslash, at most 255 bytes",
+  "directoryRequired": "Open the parent directory before creating a folder",
+  "invalidDirectoryPath": "Directory path is too long or invalid",
+  "directoryBusy": "Device is processing a directory. Try again later.",
+  "directoryBrowseFailed": "Unable to browse directories. Check the device server.",
+  "folderCreationTimedOut": "Folder creation timed out and is unconfirmed. Close and refresh the directory before retrying.",
+  "directoryAuthorizationTimeout": "Reading timed out. The directory may be unavailable or awaiting device permission. Choose another directory.",
+  "directoryUnavailable": "Unable to read this directory. Retry or choose another directory.",
+  "invalidDirectoryData": "Unable to read directory data returned by the device",
+  "deviceReadingData": "Device is reading data. Try again later.",
+  "clientApprovalRequired": "Approve this client on the server first",
+  "serverRestarted": "Device server restarted. Wait for reconnection.",
+  "savedSessionReadTimedOut": "Reading saved sessions timed out. Try again.",
+  "savedSessionReadFailed": "Unable to read saved sessions. Check the device server.",
+  "invalidSavedSessionData": "Unable to read saved session data",
+  "invalidSessionName": "Session name is too long or contains invalid characters",
+  "restoreNameNotAllowed": "An initial name cannot be set when restoring a session",
+  "requestIdReused": "Request ID was used for another operation",
+  "savedSessionMissing": "Saved session no longer exists. Refresh the list.",
+  "workingDirectoryMissing": "Working directory does not exist. Enter a directory on the device.",
+  "adapterMissing": "PiRC adapter not found. Check the device server installation.",
+  "sessionFileMissing": "Session file no longer exists. Refresh the list.",
+  "agentExecutableMissing": "Agent executable not found. Check the device installation.",
+  "headlessTmuxRequired": "This device has no graphical environment. Install tmux and retry.",
+  "launchFilePreparationFailed": "Unable to prepare terminal launch file",
+  "launchFileProtectionFailed": "Unable to protect terminal launch file",
+  "launchFileCreationFailed": "Unable to create terminal launch file",
+  "terminalConfigCreationFailed": "Unable to create terminal configuration",
+  "headlessLaunchFailed": "Unable to start background session. Check tmux and the agent installation.",
+  "terminalLaunchFailed": "Unable to open terminal. Check the agent and terminal configuration.",
+  "modelCommandDescription": "Select the model for this session",
+  "thinkingCommandDescription": "Adjust the thinking level",
+  "nameCommandDescription": "Rename the session",
+  "sessionCommandDescription": "View session information and usage",
+  "compactCommandDescription": "Compact context with optional instructions",
+  "nameRequirements": "Name must be a single line of at most 256 characters",
+  "sessionArgumentsNotAllowed": "/session does not accept arguments",
+  "absoluteDirectoryRequired": "Enter an absolute directory path on the device",
+  "directoryPathTooLong": "Directory path is too long. Choose another location.",
+  "tooManyFolders": "Too many folders in this directory. Enter a more specific path.",
+  "macDirectoryPermission": "Directory access is not allowed. On the device, open System Settings → Privacy & Security → Files and Folders and grant access to the server application, or choose another directory.",
+  "directoryPermissionDenied": "Directory access is not allowed. Check permissions on the device or choose another directory.",
+  "folderAlreadyExists": "A file or folder with this name already exists. Choose another name or refresh the directory.",
+  "folderNameInvalid": "Folder name is invalid or too long. Choose another name.",
+  "directoryMissing": "Directory does not exist or is unavailable. Check the path or choose another directory.",
+  "supportedThinkingLevels": "Supported thinking levels: {levels}",
+  "@supportedThinkingLevels": {
+    "placeholders": {
+      "levels": {
+        "type": "String"
+      }
+    }
+  },
+  "authenticationFailed": "Authentication failed",
+  "serverBusy": "A client is already connected",
+  "invalidProtocolFrame": "Invalid protocol frame",
+  "clientBehind": "Client fell behind; refresh state",
+  "registryFull": "Too many instances",
+  "invalidHistoryRequest": "Invalid history cursor or page size",
+  "unknownCommandResult": "Command result is unknown",
+  "reusedRequestPayload": "Request ID has different payload",
+  "commandCacheFull": "Command cache is full",
+  "commandForwarded": "Command forwarded; completion not confirmed"
+}

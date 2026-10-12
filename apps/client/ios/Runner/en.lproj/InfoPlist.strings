@@ -1,0 +1,2 @@
+// Local network permission description.
+"NSLocalNetworkUsageDescription" = "Connect to devices on your local network to view sessions and send commands.";

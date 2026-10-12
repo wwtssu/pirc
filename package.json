@@ -1,0 +1,27 @@
+{
+  "name": "pirc",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "extensions/pi"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "protocol:generate": "cargo run -p pirc-protocol --bin generate",
+    "test:e2e": "node tests/e2e/run.mjs",
+    "test:protocol": "node --test tests/e2e/protocol.test.ts tests/e2e/builtins.test.ts tests/e2e/exit.test.ts tests/e2e/history-recovery.test.ts",
+    "test:e2e:real": "PIRC_REAL_MODEL_SMOKE=1 node tests/e2e/run.mjs",
+    "control": "node scripts/control.mjs",
+    "test:flutter:e2e": "node tests/e2e/flutter.mjs",
+    "test:creation:e2e": "node tests/e2e/creation.mjs",
+    "test:directories": "cargo build -p pirc-server && node --test tests/e2e/directories.test.ts",
+    "test:flutter:encrypted": "node tests/e2e/encrypted-mobile.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "prettier": "^3.9.9",
+    "typescript": "^5.9.0"
+  },
+  "version": "0.1.0",
+  "license": "MIT"
+}

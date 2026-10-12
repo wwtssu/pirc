@@ -1,0 +1,22 @@
+PODS:
+  - FlutterMacOS (1.0.0)
+  - pirc_mobile_bridge (0.1.0):
+    - FlutterMacOS
+
+DEPENDENCIES:
+  - FlutterMacOS (from `Flutter/ephemeral`)
+  - pirc_mobile_bridge (from `Flutter/ephemeral/.symlinks/plugins/pirc_mobile_bridge/macos`)
+
+EXTERNAL SOURCES:
+  FlutterMacOS:
+    :path: Flutter/ephemeral
+  pirc_mobile_bridge:
+    :path: Flutter/ephemeral/.symlinks/plugins/pirc_mobile_bridge/macos
+
+SPEC CHECKSUMS:
+  FlutterMacOS: c232990155153907050900a2e175c7773903ba4e
+  pirc_mobile_bridge: 57fbaf4f686b91c02d625e81f574612f3f2b40ac
+
+PODFILE CHECKSUM: 1e95c36afbfd1cb6423ceca4de7a8e1b256fb6ac
+
+COCOAPODS: 1.15.2

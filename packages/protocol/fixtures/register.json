@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "request_id": "fixture-register",
+  "message": {
+    "type": "register",
+    "session": {
+      "session_id": "session-1",
+      "instance_id": "instance-1",
+      "cwd": "/tmp/Pi café",
+      "name": null,
+      "state": "idle",
+      "revision": 0,
+      "needs_local_attention": false,
+      "slash_commands": null
+    }
+  }
+}
