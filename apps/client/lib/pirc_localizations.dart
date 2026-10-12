@@ -317,8 +317,7 @@ extension PircLocalization on BuildContext {
       "Pairing code expired. Reconnect to retry." => l10n.pairingCodeExpired,
       "Operation result unconfirmed. Check the device terminal and refresh." =>
         l10n.checkUnconfirmedOperation,
-      "Connection lost. Retrying without resending unconfirmed operations." =>
-        l10n.reconnectingWithoutResend,
+      "Connection lost. Reconnecting…" => l10n.reconnectingAfterLoss,
       "Invalid connection address" => l10n.invalidConnectionAddress,
       "Connection addresses cannot contain credentials, query parameters, or fragments" =>
         l10n.addressComponentsInvalid,

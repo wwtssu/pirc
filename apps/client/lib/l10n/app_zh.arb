@@ -255,7 +255,7 @@
   "deviceIdentityUnconfirmed": "服务未确认设备身份",
   "pairingCodeExpired": "配对码已过期，请重试连接",
   "checkUnconfirmedOperation": "操作结果尚未确认，请检查设备终端后刷新",
-  "reconnectingWithoutResend": "连接中断，正在重试；操作结果未确认时不会自动重发",
+  "reconnectingAfterLoss": "连接中断，正在重新连接…",
   "invalidConnectionAddress": "连接地址无效",
   "addressComponentsInvalid": "连接地址不能包含用户名、密码、查询参数或片段",
   "httpUpgradeFailed": "无法创建 HTTP 升级请求",

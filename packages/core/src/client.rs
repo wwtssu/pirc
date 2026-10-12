@@ -592,7 +592,7 @@ async fn worker(
             } else if refreshing {
                 None
             } else {
-                Some("Connection lost. Retrying without resending unconfirmed operations.".into())
+                Some("Connection lost. Reconnecting…".into())
             };
             p.view.pairing = None;
             p.disconnected(error);

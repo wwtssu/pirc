@@ -357,7 +357,7 @@
   "deviceIdentityUnconfirmed": "Server did not confirm device identity",
   "pairingCodeExpired": "Pairing code expired. Reconnect to retry.",
   "checkUnconfirmedOperation": "Operation result unconfirmed. Check the device terminal and refresh.",
-  "reconnectingWithoutResend": "Connection lost. Retrying without resending unconfirmed operations.",
+  "reconnectingAfterLoss": "Connection lost. Reconnecting…",
   "invalidConnectionAddress": "Invalid connection address",
   "addressComponentsInvalid": "Connection addresses cannot contain credentials, query parameters, or fragments",
   "httpUpgradeFailed": "Unable to create HTTP upgrade request",

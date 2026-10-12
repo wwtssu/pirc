@@ -255,7 +255,7 @@
   "deviceIdentityUnconfirmed": "サーバーがデバイスの識別情報を確認しませんでした",
   "pairingCodeExpired": "ペアリングコードが期限切れです。再接続してください。",
   "checkUnconfirmedOperation": "操作結果を確認できません。デバイスのターミナルを確認して更新してください。",
-  "reconnectingWithoutResend": "接続が切断されました。未確認の操作を再送せずに再接続しています。",
+  "reconnectingAfterLoss": "接続が切断されました。再接続しています…",
   "invalidConnectionAddress": "接続アドレスが無効です",
   "addressComponentsInvalid": "接続アドレスに認証情報、クエリ、フラグメントは使用できません",
   "httpUpgradeFailed": "HTTPアップグレード要求を作成できません",
