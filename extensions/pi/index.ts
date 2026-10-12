@@ -21,7 +21,7 @@ import type { CommandData } from "../../packages/protocol/generated/CommandData.
 type RecordEntry = { original: string; result: Envelope; created: number };
 const MAX_RECORDS = 10000;
 export default function pirc(pi: ExtensionAPI) {
-  const instanceId = randomUUID();
+  let instanceId = randomUUID();
   let ctx: ExtensionContext | undefined;
   let session: SessionSnapshot;
   let socket: WebSocket | undefined;
@@ -34,7 +34,8 @@ export default function pirc(pi: ExtensionAPI) {
   let reconnect: ReturnType<typeof setTimeout> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let stopRequests = new Set<string>();
-  let pendingPrompt: { id: string; text: string; started: number } | undefined;
+  let pendingPrompt:
+    { id: string; text: string; started: number; ackText?: string } | undefined;
   let pendingBuiltin: { id: string; command: string } | undefined;
   let localCompacting = false;
   let localPreflight = false;
@@ -431,7 +432,35 @@ export default function pirc(pi: ExtensionAPI) {
       if (active && socket === ws) reconnect = setTimeout(connect, 500);
     });
   }
-  pi.on("session_start", (_e, context) => {
+  function startSession(context: ExtensionContext) {
+    if (active)
+      send(
+        packet({
+          type: "unregister",
+          session_id: session.session_id,
+          instance_id: instanceId,
+        }),
+      );
+    active = false;
+    clearTimeout(reconnect);
+    clearInterval(heartbeat);
+    const previous = socket;
+    socket = undefined;
+    previous?.close();
+    instanceId = randomUUID();
+    generation = "";
+    syncedGeneration = "";
+    sourceSeq = 0;
+    assistantEvents = [];
+    assistantMessageId = randomUUID();
+    historyQueue = [];
+    historyCursor = 0;
+    runningTools.clear();
+    records.clear();
+    stopRequests.clear();
+    pendingPrompt = undefined;
+    pendingBuiltin = undefined;
+    localPreflight = false;
     ctx = context;
     const initialName = process.env.PIRC_INITIAL_NAME?.trim();
     delete process.env.PIRC_INITIAL_NAME;
@@ -460,6 +489,7 @@ export default function pirc(pi: ExtensionAPI) {
     syncingHistory = true;
     localCompacting = false;
     session = {
+      capabilities: ["local_ui_state"],
       session_id: context.sessionManager.getSessionId(),
       instance_id: instanceId,
       cwd: context.cwd,
@@ -517,7 +547,9 @@ export default function pirc(pi: ExtensionAPI) {
         );
       }
     }, 1000);
-  });
+  }
+  pi.on("session_start", (_event, context) => startSession(context));
+  pi.on("session_tree", (_event, context) => startSession(context));
   pi.on("session_shutdown", () => {
     if (!active && !heartbeat) return;
     send(
@@ -570,8 +602,9 @@ export default function pirc(pi: ExtensionAPI) {
       state("running");
     }
   });
-  pi.on("before_agent_start", () => {
+  pi.on("before_agent_start", (e) => {
     if (active) {
+      if (pendingPrompt) pendingPrompt.ackText = e.prompt;
       if (pendingPrompt?.text.trimStart().startsWith("/")) {
         result(pendingPrompt.id, "accepted");
         pendingPrompt = undefined;
@@ -595,15 +628,17 @@ export default function pirc(pi: ExtensionAPI) {
       setImmediate(confirmIdle);
     }
   });
-  pi.on("ui_prompt_start", () => {
+  pi.on("ui_prompt_start", (e) => {
     if (active) {
       attention = true;
+      session.ui_prompt = { kind: e.kind, title: e.title ?? null };
       state(session.state);
     }
   });
   pi.on("ui_prompt_end", () => {
     if (active) {
       attention = false;
+      session.ui_prompt = undefined;
       state(session.state);
       setImmediate(confirmIdle);
     }
@@ -665,6 +700,27 @@ export default function pirc(pi: ExtensionAPI) {
         });
         if (message.errorMessage)
           append("error", { text: message.errorMessage, is_error: true });
+      } else if (message.role === "custom" && message.display) {
+        append("text_end", {
+          message_id: entry.id,
+          content_index: 0,
+          text: text(message.content),
+        });
+      } else if (message.role === "bashExecution") {
+        append("tool_start", {
+          tool_call_id: entry.id,
+          tool_name: "bash",
+          text: JSON.stringify({ command: message.command }),
+        });
+        append("tool_end", {
+          tool_call_id: entry.id,
+          tool_name: "bash",
+          text: message.output,
+          is_error:
+            message.cancelled ||
+            (message.exitCode !== undefined && message.exitCode !== 0),
+          truncated: message.truncated,
+        });
       } else if (message.role === "toolResult")
         append("tool_end", {
           tool_call_id: message.toolCallId,
@@ -706,7 +762,11 @@ export default function pirc(pi: ExtensionAPI) {
         message_id: randomUUID(),
         text: text(e.message.content),
       });
-      if (pendingPrompt && text(e.message.content) === pendingPrompt.text) {
+      if (
+        pendingPrompt &&
+        text(e.message.content) ===
+          (pendingPrompt.ackText ?? pendingPrompt.text)
+      ) {
         result(pendingPrompt.id, "accepted");
         pendingPrompt = undefined;
       }
@@ -775,7 +835,34 @@ export default function pirc(pi: ExtensionAPI) {
     }
   });
   pi.on("message_end", (e) => {
-    if (!active || e.message.role !== "assistant") return;
+    if (!active) return;
+    if (e.message.role === "custom" && e.message.display) {
+      event("text_end", {
+        message_id: randomUUID(),
+        content_index: 0,
+        text: text(e.message.content),
+      });
+      return;
+    }
+    if (e.message.role === "bashExecution") {
+      const id = randomUUID();
+      event("tool_start", {
+        tool_call_id: id,
+        tool_name: "bash",
+        text: JSON.stringify({ command: e.message.command }),
+      });
+      event("tool_end", {
+        tool_call_id: id,
+        tool_name: "bash",
+        text: e.message.output,
+        is_error:
+          e.message.cancelled ||
+          (e.message.exitCode !== undefined && e.message.exitCode !== 0),
+        truncated: e.message.truncated,
+      });
+      return;
+    }
+    if (e.message.role !== "assistant") return;
     // Final blocks also repair providers that omit a block's end event on abort.
     e.message.content.forEach((block, content_index) => {
       const values = { message_id: assistantMessageId, content_index };

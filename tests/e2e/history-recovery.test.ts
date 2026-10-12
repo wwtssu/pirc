@@ -81,6 +81,40 @@ test("new server generations rebuild durable history and unfinished streams with
       },
     },
   ];
+  branch.push(
+    {
+      type: "message",
+      id: "plugin-visible",
+      message: {
+        role: "custom",
+        customType: "fixture",
+        content: "Visible plugin message",
+        display: true,
+      },
+    },
+    {
+      type: "message",
+      id: "plugin-hidden",
+      message: {
+        role: "custom",
+        customType: "fixture",
+        content: "Hidden plugin message",
+        display: false,
+      },
+    },
+    {
+      type: "message",
+      id: "shell-local",
+      message: {
+        role: "bashExecution",
+        command: "printf fixture",
+        output: "fixture shell output",
+        exitCode: 0,
+        cancelled: false,
+        truncated: false,
+      },
+    },
+  );
   let busy = false;
   const pi = {
     on: (key: string, handler: (...args: any[]) => any) =>
@@ -103,11 +137,37 @@ test("new server generations rebuild durable history and unfinished streams with
     hooks.get("session_start")!({}, ctx);
     const ws = Socket.current;
     ws.welcome("first");
+    const initialInstance = ws.frames.find((f) => f.message.type === "register")
+      .message.session.instance_id;
     assert.equal(
       ws.events().filter((e) => e.event.text === "saved answer").length,
       1,
     );
     assert(ws.events().some((e) => e.event.text === "saved thinking"));
+    assert(ws.events().some((e) => e.event.text === "Visible plugin message"));
+    assert(!ws.events().some((e) => e.event.text === "Hidden plugin message"));
+    assert(
+      ws
+        .events()
+        .some(
+          (e) =>
+            e.event.tool_name === "bash" &&
+            e.event.text === "fixture shell output",
+        ),
+    );
+
+    hooks.get("ui_prompt_start")!({ kind: "confirm", title: "Allow action?" });
+    assert.deepEqual(
+      ws.frames.filter((f) => f.message.type === "snapshot").at(-1).message
+        .session.ui_prompt,
+      { kind: "confirm", title: "Allow action?" },
+    );
+    hooks.get("ui_prompt_end")!({ kind: "confirm" });
+    assert.equal(
+      ws.frames.filter((f) => f.message.type === "snapshot").at(-1).message
+        .session.ui_prompt,
+      undefined,
+    );
     assert(ws.events().some((e) => e.event.text === "saved output"));
     const before = ws.events().length;
     ws.welcome("first");
@@ -235,6 +295,29 @@ test("new server generations rebuild durable history and unfinished streams with
     assert.equal(final.filter((e) => e.text === "complete answer").length, 1);
     assert(!final.some((e) => e.text === "unfinished answer"));
     assert(final.some((e) => e.kind === "agent_settled"));
+    hooks.get("session_start")!(
+      { reason: "new" },
+      {
+        ...ctx,
+        sessionManager: {
+          getSessionId: () => "next-session",
+          getBranch: () => [],
+        },
+      },
+    );
+    const nextSocket = Socket.current;
+    nextSocket.welcome("fourth");
+    const next = nextSocket.frames.find((f) => f.message.type === "register")
+      .message.session;
+    assert.equal(next.session_id, "next-session");
+    assert.notEqual(next.instance_id, initialInstance);
+    assert(
+      ws.frames.some(
+        (f) =>
+          f.message.type === "unregister" &&
+          f.message.instance_id === initialInstance,
+      ),
+    );
   } finally {
     hooks.get("session_shutdown")?.();
     globalThis.WebSocket = original;

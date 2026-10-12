@@ -120,7 +120,18 @@ pub enum CommandData {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
+pub struct UiPrompt {
+    pub kind: String,
+    pub title: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
 pub struct SessionSnapshot {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ui_prompt: Option<UiPrompt>,
     pub session_id: String,
     pub instance_id: String,
     pub cwd: String,

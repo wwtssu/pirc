@@ -1128,6 +1128,8 @@ mod tests {
     }
     fn snapshot(instance: &str) -> SessionSnapshot {
         SessionSnapshot {
+            capabilities: vec![],
+            ui_prompt: None,
             session_id: format!("s-{instance}"),
             instance_id: instance.into(),
             cwd: "/tmp".into(),

@@ -61,6 +61,8 @@ fn main() {
             "register",
             Message::Register {
                 session: SessionSnapshot {
+                    capabilities: vec![],
+                    ui_prompt: None,
                     session_id: "session-1".into(),
                     instance_id: "instance-1".into(),
                     cwd: "/tmp/Pi café".into(),

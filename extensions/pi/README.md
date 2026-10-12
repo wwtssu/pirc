@@ -26,3 +26,9 @@ The default connection address is `ws://127.0.0.1:43123/extension`; only loopbac
 Supports Stop, regular prompts, and `/model`, `/thinking`, `/name`, `/session`, and `/compact`. Built-in commands execute through the Extension API. Model and thinking settings apply to the current session.
 
 Commands validate the session identity and state revision. After stopping, new prompts are accepted only once the agent is confirmed idle. A prompt is acknowledged when Pi emits its user message event. Reconnection synchronizes snapshots and reports event gaps. Server restarts automatically rebuild history from the agent session and unfinished streams.
+
+## Session lifecycle and local UI
+
+Local session changes and branch navigation register a fresh adapter instance and rebuild the selected branch's history. Visible extension messages and local shell output are included in the transcript. Remote prompt acknowledgement uses the text that Pi actually submits after preprocessing.
+
+Blocking extension UI prompts expose their kind and title through session state. They remain interactive in the terminal: Pi's public UI events do not expose selectable options or a remote response callback. Custom TUI components and plugin renderers use their textual tool output remotely.

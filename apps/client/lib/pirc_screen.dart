@@ -1209,7 +1209,11 @@ class _SessionPageState extends State<SessionPage> {
                 ),
                 child: _InlineNotice(
                   text: s.attention
-                      ? context.l10n.completeOnTerminal
+                      ? ((s.snapshot['ui_prompt'] as Map?)?['title'] as String?)
+                                    ?.isNotEmpty ==
+                                true
+                            ? '${context.l10n.completeOnTerminal}: ${(s.snapshot['ui_prompt'] as Map)['title']}'
+                            : context.l10n.completeOnTerminal
                       : context.l10n.incompleteConversation,
                 ),
               ),

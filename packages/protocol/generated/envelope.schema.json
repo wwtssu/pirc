@@ -1323,6 +1323,12 @@
             "null"
           ]
         },
+        "capabilities": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "controls": {
           "anyOf": [
             {
@@ -1375,6 +1381,16 @@
         },
         "state": {
           "$ref": "#/$defs/SessionState"
+        },
+        "ui_prompt": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UiPrompt"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
@@ -1500,6 +1516,24 @@
         "truncated",
         "first_seq",
         "last_seq"
+      ],
+      "type": "object"
+    },
+    "UiPrompt": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string"
+        },
+        "title": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "kind"
       ],
       "type": "object"
     }

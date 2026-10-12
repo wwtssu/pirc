@@ -1,6 +1,8 @@
 use super::*;
 fn snapshot() -> SessionSnapshot {
     SessionSnapshot {
+        capabilities: vec![],
+        ui_prompt: None,
         session_id: "s".into(),
         instance_id: "i".into(),
         cwd: "/tmp".into(),
