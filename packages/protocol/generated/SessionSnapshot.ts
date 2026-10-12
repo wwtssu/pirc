@@ -4,8 +4,8 @@ import type { SessionState } from "./SessionState";
 import type { SlashCommand } from "./SlashCommand";
 import type { UiPrompt } from "./UiPrompt";
 
-export type SessionSnapshot = { capabilities?: Array<string>, ui_prompt?: UiPrompt | null, session_id: string, instance_id: string, cwd: string, name: string | null, state: SessionState, revision: number, needs_local_attention: boolean, slash_commands: Array<SlashCommand> | null, controls?: SessionControls | null, launch_id?: string,
+export type SessionSnapshot = { agent_id: string, capabilities?: Array<string>, ui_prompt?: UiPrompt | null, session_id: string, instance_id: string, cwd: string, name: string | null, state: SessionState, revision: number, needs_local_attention: boolean, slash_commands: Array<SlashCommand> | null, controls?: SessionControls | null, launch_id?: string,
 /**
- * Extension supports graceful exit for this Server-launched terminal.
+ * Adapter supports graceful exit for this Server-launched terminal.
  */
 can_close?: boolean, };

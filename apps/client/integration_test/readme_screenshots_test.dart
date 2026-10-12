@@ -19,6 +19,7 @@ Map<String, dynamic> session(
   List<Map<String, dynamic>> items = const [],
 }) => {
   'snapshot': {
+    'agent_id': 'pi',
     'session_id': id,
     'instance_id': id,
     'cwd': cwd,

@@ -51,6 +51,9 @@ class SessionView {
   int get historyRevision => history['revision'] as int? ?? 0;
   int? get historyAnchor => history['anchor'] as int?;
   String get instance => snapshot['instance_id'] as String;
+  String get agentId => snapshot['agent_id'] as String;
+  bool supportsCapability(String capability) =>
+      (snapshot['capabilities'] as List? ?? []).contains(capability);
   String get session => snapshot['session_id'] as String;
   String get cwd => snapshot['cwd'] as String;
   String? get sessionName {
@@ -77,12 +80,14 @@ class SessionView {
 
 class SavedSession {
   SavedSession(Map<String, dynamic> json)
-    : id = json['session_id'] as String,
+    : agentId = json['agent_id'] as String,
+      id = json['session_id'] as String,
       cwd = json['cwd'] as String,
       name = (json['name'] as String?)?.trim(),
       modified = DateTime.fromMillisecondsSinceEpoch(
         json['modified_ms'] as int,
       );
+  final String agentId;
   final String id;
   final String cwd;
   final String? name;
@@ -90,8 +95,19 @@ class SavedSession {
   String get title => name == null || name!.isEmpty ? 'Unnamed session' : name!;
 }
 
+class AgentInfo {
+  const AgentInfo({required this.id, required this.name});
+  final String id;
+  final String name;
+}
+
 class SavedSessionCatalog {
-  SavedSessionCatalog({required this.sessions, required this.defaultCwd});
+  SavedSessionCatalog({
+    required this.agents,
+    required this.sessions,
+    required this.defaultCwd,
+  });
+  final List<AgentInfo> agents;
   final List<SavedSession> sessions;
   final String defaultCwd;
 }
@@ -199,6 +215,11 @@ class PircController extends ChangeNotifier {
       await bridge.savedSessions(client: client),
     ) as Map<String, dynamic>;
     return SavedSessionCatalog(
+      agents: (data['agents'] as List)
+          .map(
+            (a) => AgentInfo(id: a['id'] as String, name: a['name'] as String),
+          )
+          .toList(),
       sessions: (data['sessions'] as List)
           .map((s) => SavedSession((s as Map).cast<String, dynamic>()))
           .toList(),
@@ -286,6 +307,7 @@ class PircController extends ChangeNotifier {
 
   Future<String> launchSession(
     String cwd, {
+    required String agentId,
     String? sessionId,
     String? name,
     bool createCwd = false,
@@ -300,6 +322,7 @@ class PircController extends ChangeNotifier {
       await bridge
           .launchSession(
             client: client,
+            agentId: agentId,
             cwd: cwd,
             sessionId: sessionId,
             name: name,
@@ -329,9 +352,10 @@ class PircController extends ChangeNotifier {
       final session = onlineSessions
           .where(
             (s) =>
-                (result['instance_id'] != null &&
-                    s.instance == result['instance_id']) ||
-                s.snapshot['launch_id'] == result['launch_id'],
+                s.agentId == agentId &&
+                ((result['instance_id'] != null &&
+                        s.instance == result['instance_id']) ||
+                    s.snapshot['launch_id'] == result['launch_id']),
           )
           .firstOrNull;
       if (session != null) {
@@ -452,7 +476,7 @@ class PircController extends ChangeNotifier {
     notifyListeners();
   }
 
-  String _key(SessionView s) => 'draft:$computerId:${s.session}';
+  String _key(SessionView s) => 'draft:$computerId:${s.agentId}:${s.session}';
   String draft(SessionView s) =>
       _drafts.putIfAbsent(_key(s), () => preferences?.getString(_key(s)) ?? '');
   void setDraft(SessionView s, String text) {

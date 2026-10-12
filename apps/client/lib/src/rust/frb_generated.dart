@@ -133,6 +133,7 @@ abstract class RustLibApi extends BaseApi {
 
   Future<String> crateApiClientLaunchSession({
     required PircClient client,
+    required String agentId,
     required String cwd,
     String? sessionId,
     String? name,
@@ -598,6 +599,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   @override
   Future<String> crateApiClientLaunchSession({
     required PircClient client,
+    required String agentId,
     required String cwd,
     String? sessionId,
     String? name,
@@ -611,6 +613,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             client,
             serializer,
           );
+          sse_encode_String(agentId, serializer);
           sse_encode_String(cwd, serializer);
           sse_encode_opt_String(sessionId, serializer);
           sse_encode_opt_String(name, serializer);
@@ -627,7 +630,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiClientLaunchSessionConstMeta,
-        argValues: [client, cwd, sessionId, name, createCwd],
+        argValues: [client, agentId, cwd, sessionId, name, createCwd],
         apiImpl: this,
       ),
     );
@@ -636,7 +639,14 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiClientLaunchSessionConstMeta =>
       const TaskConstMeta(
         debugName: "launch_session",
-        argNames: ["client", "cwd", "sessionId", "name", "createCwd"],
+        argNames: [
+          "client",
+          "agentId",
+          "cwd",
+          "sessionId",
+          "name",
+          "createCwd",
+        ],
       );
 
   @override

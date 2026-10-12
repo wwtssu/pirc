@@ -73,6 +73,7 @@ impl Client {
     }
     pub async fn launch_session(
         &self,
+        agent_id: String,
         cwd: String,
         session_id: Option<String>,
         name: Option<String>,
@@ -83,6 +84,7 @@ impl Client {
             .generation
             .ok_or("Wait for the connection to recover, then retry.")?;
         self.request(Message::LaunchSession {
+            agent_id,
             generation_id,
             cwd,
             session_id,

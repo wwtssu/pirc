@@ -34,8 +34,11 @@ class DirectoryController extends PircController {
   }
 
   @override
-  Future<SavedSessionCatalog> loadSavedSessions() async =>
-      SavedSessionCatalog(sessions: [], defaultCwd: '/remote/home');
+  Future<SavedSessionCatalog> loadSavedSessions() async => SavedSessionCatalog(
+    agents: const [AgentInfo(id: 'pi', name: 'Pi')],
+    sessions: [],
+    defaultCwd: '/remote/home',
+  );
   @override
   Future<RemoteDirectoryPage> browseDirectories({
     String? path,

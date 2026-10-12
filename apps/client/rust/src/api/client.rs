@@ -63,6 +63,7 @@ pub async fn browse_directories(
 }
 pub async fn launch_session(
     client: &PircClient,
+    agent_id: String,
     cwd: String,
     session_id: Option<String>,
     name: Option<String>,
@@ -71,7 +72,7 @@ pub async fn launch_session(
     serde_json::to_string(
         &client
             .inner
-            .launch_session(cwd, session_id, name, create_cwd)
+            .launch_session(agent_id, cwd, session_id, name, create_cwd)
             .await?,
     )
     .map_err(|e| e.to_string())

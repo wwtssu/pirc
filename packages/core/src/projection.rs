@@ -1208,6 +1208,7 @@ mod tests {
     }
     fn snapshot(instance: &str) -> SessionSnapshot {
         SessionSnapshot {
+            agent_id: "pi".into(),
             capabilities: vec![],
             ui_prompt: None,
             session_id: format!("s-{instance}"),

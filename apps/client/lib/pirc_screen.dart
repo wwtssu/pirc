@@ -1459,9 +1459,7 @@ class _SessionPageState extends State<SessionPage> {
                               prefixIcon: AttachmentButton(
                                 key: const Key('attach-attachment'),
                                 loading: pickingImage,
-                                images:
-                                    (s.snapshot['capabilities'] as List? ?? [])
-                                        .contains('image_prompt'),
+                                images: s.supportsCapability('image_prompt'),
                                 onSelected:
                                     connected &&
                                         !actionInFlight &&

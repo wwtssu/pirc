@@ -23,6 +23,10 @@ class SessionSettingsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final awaitingCommands = session.snapshot['slash_commands'] == null;
+    final hasModel = awaitingCommands || session.supportsBuiltin('model');
+    final hasThinking = awaitingCommands || session.supportsBuiltin('thinking');
+    if (!hasModel && !hasThinking) return const SizedBox.shrink();
     final model = session.currentModel;
     final modelName = model?['name'] as String? ?? model?['id'] as String?;
     final modelValue = session.controls == null
@@ -69,10 +73,12 @@ class SessionSettingsBar extends StatelessWidget {
           tooltip: level == null
               ? context.l10n.thinkingNotSynced
               : context.l10n.currentThinking(level),
-          onTap: enabled && model != null && session.supportsBuiltin('thinking')
+          onTap: enabled && session.supportsBuiltin('thinking')
               ? () => onSelect('thinking')
               : null,
         );
+        if (!hasModel) return thinkingButton;
+        if (!hasThinking) return modelButton;
         if (modelMinWidth + PircSpacing.s8 + thinkingWidth >
             constraints.maxWidth) {
           return Column(

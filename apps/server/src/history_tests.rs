@@ -18,6 +18,7 @@ async fn fixture() -> (App, Sender) {
     };
     let (tx, _) = mpsc::channel(8);
     let session = SessionSnapshot {
+        agent_id: "pi".into(),
         capabilities: vec![],
         ui_prompt: None,
         session_id: "s".into(),

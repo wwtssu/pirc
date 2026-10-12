@@ -1,6 +1,7 @@
 use super::*;
 fn snapshot() -> SessionSnapshot {
     SessionSnapshot {
+        agent_id: "pi".into(),
         capabilities: vec![],
         ui_prompt: None,
         session_id: "s".into(),

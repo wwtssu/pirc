@@ -558,6 +558,7 @@ fn wire__crate__api__client__launch_session_impl(
             let api_client = <RustOpaqueMoi<
                 flutter_rust_bridge::for_generated::RustAutoOpaqueInner<PircClient>,
             >>::sse_decode(&mut deserializer);
+            let api_agent_id = <String>::sse_decode(&mut deserializer);
             let api_cwd = <String>::sse_decode(&mut deserializer);
             let api_session_id = <Option<String>>::sse_decode(&mut deserializer);
             let api_name = <Option<String>>::sse_decode(&mut deserializer);
@@ -587,6 +588,7 @@ fn wire__crate__api__client__launch_session_impl(
                         let api_client_guard = api_client_guard.unwrap();
                         let output_ok = crate::api::client::launch_session(
                             &*api_client_guard,
+                            api_agent_id,
                             api_cwd,
                             api_session_id,
                             api_name,

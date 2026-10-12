@@ -15,15 +15,18 @@ class CreationController extends PircController {
   final launched = Completer<String>();
   final calls = <(String, String?)>[];
   final names = <String?>[];
+  final agentIds = <String>[];
   @override
   Future<SavedSessionCatalog> loadSavedSessions() => catalog.future;
   @override
   Future<String> launchSession(
     String cwd, {
+    required String agentId,
     String? sessionId,
     String? name,
     bool createCwd = false,
   }) {
+    agentIds.add(agentId);
     calls.add((cwd, sessionId));
     names.add(name);
     return launched.future;
@@ -35,10 +38,12 @@ class MissingDirectoryController extends CreationController {
   @override
   Future<String> launchSession(
     String cwd, {
+    required String agentId,
     String? sessionId,
     String? name,
     bool createCwd = false,
   }) {
+    agentIds.add(agentId);
     calls.add((cwd, sessionId));
     names.add(name);
     createFlags.add(createCwd);
@@ -54,6 +59,7 @@ Map<String, dynamic> view(String state) => {
   'sessions': [
     {
       'snapshot': {
+        'agent_id': 'pi',
         'session_id': 's',
         'instance_id': 'i',
         'cwd': '/tmp/project',
@@ -68,12 +74,131 @@ Map<String, dynamic> view(String state) => {
   ],
 };
 SavedSession saved(String id, String name) => SavedSession({
+  'agent_id': 'pi',
   'session_id': id,
   'name': name,
   'cwd': '/tmp/project',
   'modified_ms': 1700000000000,
 });
 void main() {
+  testWidgets(
+    'one detected agent hides both selectors and still creates a session',
+    (tester) async {
+      final model = CreationController()..applyDecodedView(view('idle'));
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: pircTheme(),
+          home: NewSessionPage(model: model),
+        ),
+      );
+      model.catalog.complete(
+        SavedSessionCatalog(
+          agents: const [AgentInfo(id: 'pi', name: 'Pi')],
+          sessions: [],
+          defaultCwd: '/tmp/project',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(ChoiceChip), findsNothing);
+      await tester.tap(find.byKey(const Key('launch-new-session')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('create-session-agent')), findsNothing);
+      await tester.tap(find.byKey(const Key('confirm-create-session')));
+      await tester.pump();
+      expect(model.agentIds, ['pi']);
+      expect(model.names, [null]);
+      model.launched.completeError(StateError('Fixture finished'));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('dismiss-session-launch-error')));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+      model.dispose();
+    },
+  );
+
+  testWidgets(
+    'agent selection and restoration keep distinct session identities',
+    (tester) async {
+      final model = CreationController()..applyDecodedView(view('idle'));
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          locale: const Locale('en'),
+          theme: pircTheme(),
+          home: NewSessionPage(model: model),
+        ),
+      );
+      model.catalog.complete(
+        SavedSessionCatalog(
+          agents: const [
+            AgentInfo(id: 'pi', name: 'Pi'),
+            AgentInfo(id: 'other', name: 'Other agent'),
+          ],
+          sessions: [
+            saved('s', 'Already online'),
+            SavedSession({
+              'agent_id': 'other',
+              'session_id': 's',
+              'name': 'Other history',
+              'cwd': '/tmp/project',
+              'modified_ms': 1700000000000,
+            }),
+          ],
+          defaultCwd: '/tmp/project',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('Already online'), findsNothing);
+      expect(find.text('Other history'), findsNothing);
+      await tester.tap(find.byKey(const ValueKey('agent-other')));
+      await tester.pump();
+      expect(
+        tester
+            .widget<ChoiceChip>(find.byKey(const ValueKey('agent-other')))
+            .selected,
+        isTrue,
+      );
+      expect(find.text('Other history'), findsOneWidget);
+      final chip = tester.widget<ChoiceChip>(
+        find.byKey(const ValueKey('agent-other')),
+      );
+      expect(chip.showCheckmark, isFalse);
+      expect(
+        tester.getSize(find.byKey(const ValueKey('agent-other'))).height,
+        lessThanOrEqualTo(32),
+      );
+      // Tapping the selected chip must not clear the radio selection.
+      await tester.tap(find.byKey(const ValueKey('agent-other')));
+      await tester.pump();
+      expect(find.text('Other history'), findsOneWidget);
+      await tester.tap(find.byKey(const ValueKey(('restore', 'other', 's'))));
+      await tester.pump();
+      expect(model.agentIds, ['other']);
+      model.launched.completeError(StateError('Fixture stopped'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('dismiss-session-launch-error')));
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(const SizedBox());
+      model.dispose();
+    },
+  );
+  test('drafts are isolated by agent even when session IDs match', () {
+    final model = PircController()..applyDecodedView(view('idle'));
+    final first = model.sessions.single;
+    final otherData = view('idle');
+    otherData['sessions'][0]['snapshot']['agent_id'] = 'other';
+    final other = SessionView(otherData['sessions'][0]);
+    model.setDraft(first, 'First draft');
+    model.setDraft(other, 'Other draft');
+    expect(model.draft(first), 'First draft');
+    expect(model.draft(other), 'Other draft');
+    model.dispose();
+  });
+
   for (final confirm in [true, false]) {
     testWidgets(
       'missing history directory ${confirm ? 'is created after confirmation' : 'is not created when cancelled'}',
@@ -90,8 +215,10 @@ void main() {
         );
         model.catalog.complete(
           SavedSessionCatalog(
+            agents: const [AgentInfo(id: 'pi', name: 'Pi')],
             sessions: [
               SavedSession({
+                'agent_id': 'pi',
                 'session_id': 'history',
                 'cwd': '/missing/parent/project',
                 'name': 'History',
@@ -178,13 +305,14 @@ void main() {
       expect(find.byType(PircLoading), findsOneWidget);
       model.catalog.complete(
         SavedSessionCatalog(
+          agents: const [AgentInfo(id: 'pi', name: 'Pi')],
           sessions: [saved('s', 'Restored name')],
           defaultCwd: '/tmp/project',
         ),
       );
       await tester.pumpAndSettle();
       expect(find.text('Restored name'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('restore-s')));
+      await tester.tap(find.byKey(const ValueKey(('restore', 'pi', 's'))));
       await tester.pump();
       expect(model.calls, [('/tmp/project', 's')]);
       expect(
@@ -220,6 +348,7 @@ void main() {
       );
       model.catalog.complete(
         SavedSessionCatalog(
+          agents: const [AgentInfo(id: 'pi', name: 'Pi')],
           sessions: [
             saved('s', 'Online session'),
             saved('old', 'Fix login'),
@@ -280,9 +409,17 @@ void main() {
         ),
       );
       model.catalog.complete(
-        SavedSessionCatalog(sessions: [], defaultCwd: '/tmp/project'),
+        SavedSessionCatalog(
+          agents: const [
+            AgentInfo(id: 'pi', name: 'Pi'),
+            AgentInfo(id: 'other', name: 'Other agent'),
+          ],
+          sessions: [],
+          defaultCwd: '/tmp/project',
+        ),
       );
       await tester.pumpAndSettle();
+
       await tester.tap(find.byKey(const Key('launch-new-session')));
       await tester.pumpAndSettle();
       expect(
@@ -296,6 +433,16 @@ void main() {
       expect(model.calls, isEmpty);
       await tester.tap(find.byKey(const Key('launch-new-session')));
       await tester.pumpAndSettle();
+      expect(
+        tester.getTopLeft(find.byKey(const Key('create-session-agent'))).dy,
+        greaterThan(
+          tester.getBottomLeft(find.byKey(const Key('create-session-name'))).dy,
+        ),
+      );
+      await tester.tap(find.byKey(const Key('create-session-agent')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Other agent').last);
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byKey(const Key('create-session-name')),
         '  Fix login  ',
@@ -303,6 +450,7 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump(const Duration(milliseconds: 400));
       expect(model.names, ['Fix login']);
+      expect(model.agentIds, ['other']);
       expect(model.calls, [('/tmp/project', null)]);
       expect(find.byKey(const Key('session-launch-dialog')), findsOneWidget);
       model.launched.completeError(StateError('Test finished'));
@@ -328,6 +476,7 @@ void main() {
       );
       model.catalog.complete(
         SavedSessionCatalog(
+          agents: const [AgentInfo(id: 'pi', name: 'Pi')],
           sessions: List.generate(
             25,
             (i) => saved('old-$i', 'Saved session $i'),
@@ -337,11 +486,11 @@ void main() {
       );
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(
-        find.byKey(const Key('restore-old-24')),
+        find.byKey(const ValueKey(('restore', 'pi', 'old-24'))),
         400,
         scrollable: find.byType(Scrollable).first,
       );
-      await tester.tap(find.byKey(const Key('restore-old-24')));
+      await tester.tap(find.byKey(const ValueKey(('restore', 'pi', 'old-24'))));
       await tester.pump(const Duration(milliseconds: 400));
       expect(find.byKey(const Key('session-launch-dialog')), findsOneWidget);
       expect(
@@ -391,6 +540,7 @@ void main() {
       );
       model.catalog.complete(
         SavedSessionCatalog(
+          agents: const [AgentInfo(id: 'pi', name: 'Pi')],
           sessions: [saved('old', 'A very long session name' * 10)],
           defaultCwd: '/tmp/project',
         ),

@@ -54,12 +54,14 @@ Future<String> browseDirectories({
 
 Future<String> launchSession({
   required PircClient client,
+  required String agentId,
   required String cwd,
   String? sessionId,
   String? name,
   required bool createCwd,
 }) => RustLib.instance.api.crateApiClientLaunchSession(
   client: client,
+  agentId: agentId,
   cwd: cwd,
   sessionId: sessionId,
   name: name,

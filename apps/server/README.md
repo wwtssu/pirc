@@ -23,7 +23,7 @@ pirc allow XXXX-XXXX
 
 To use a different port, run `pirc server --port <port>`.
 
-The server listens on `0.0.0.0`. The client uses the device address; the extension uses a local loopback WebSocket address. The server finds Node and Pi on PATH, selects the system terminal automatically, and stores its device identity, encryption key, and client approvals in `~/.pirc`.
+The server listens on `0.0.0.0`. The client uses the device address; the extension uses a local loopback WebSocket address. The Pi adapter finds Node and Pi on PATH. The server selects the system terminal automatically, and stores its device identity, encryption key, and client approvals in `~/.pirc`.
 
 ## Endpoints and connections
 
@@ -56,3 +56,5 @@ For systemd deployments, set `KillMode=process` in the server unit to keep headl
 ## File attachments
 
 Authorized clients can upload files of up to 20 MiB in bounded chunks. Uploads require a current server generation and an online session. Files are stored under `~/.pirc/attachments` with separate directories for each session instance and upload. Filenames cannot contain path separators; existing uploads are never overwritten.
+
+See [Agent adapters](../../docs/ADAPTERS.md) for the shared protocol and adapter boundary.

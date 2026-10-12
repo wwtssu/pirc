@@ -26,6 +26,7 @@ class ComputerPeer {
   };
   Map<String, dynamic> get snapshot => {
     ...identity,
+    'agent_id': 'pi',
     'cwd': '/tmp/$name',
     'name': 'Conversation $name',
     'state': 'idle',

@@ -62,6 +62,7 @@ fn main() {
             "register",
             Message::Register {
                 session: SessionSnapshot {
+                    agent_id: "pi".into(),
                     capabilities: vec![],
                     ui_prompt: None,
                     session_id: "session-1".into(),

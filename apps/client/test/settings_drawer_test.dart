@@ -16,6 +16,7 @@ class ComputerController extends PircController {
     'sessions': [
       {
         'snapshot': {
+          'agent_id': 'pi',
           'session_id': 'same-session',
           'instance_id': 'same-instance',
           'cwd': '/tmp/project',

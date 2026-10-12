@@ -558,6 +558,7 @@ export default function pirc(pi: ExtensionAPI) {
     syncingHistory = true;
     localCompacting = false;
     session = {
+      agent_id: "pi",
       capabilities: ["image_read", "image_prompt", "local_ui_state"],
       session_id: context.sessionManager.getSessionId(),
       instance_id: instanceId,

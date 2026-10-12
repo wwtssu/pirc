@@ -56,7 +56,7 @@ try {
   ws.send(JSON.stringify({ version: 1, request_id: randomUUID(), message: { type: 'auth' } }));
   const generation_id = (await wait(() => frames.find(f => f.message.type === 'welcome'))).message.generation_id;
   async function launch(session_id, name) {
-    const result = await request({ type: 'launch_session', generation_id, cwd, session_id, name });
+    const result = await request({ type: 'launch_session', agent_id: 'pi', generation_id, cwd, session_id, name });
     assert.equal(result.type, 'session_launched', JSON.stringify(result));
     const session = (await wait(() => frames.find(f => f.message.type === 'snapshot' && f.message.session.launch_id === result.launch_id && f.message.session.state === 'idle'))).message.session;
     assert.equal(session.can_close, true);

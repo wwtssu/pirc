@@ -63,7 +63,7 @@ async function retainedFixture() {
     fixture.addEventListener('error',reject,{once:true});
     fixture.addEventListener('message', e=> { if (JSON.parse(e.data).message.type==='welcome') resolve(); },{once:true});
   });
-  const session={session_id:'retained-fixture',instance_id:'retained-fixture',cwd:'/retention-fixture',name:'Retention check',state:'idle',revision:1,needs_local_attention:false};
+  const session={agent_id:'pi',session_id:'retained-fixture',instance_id:'retained-fixture',cwd:'/retention-fixture',name:'Retention check',state:'idle',revision:1,needs_local_attention:false};
   send({type:'register',session});
   for (let seq=1;seq<=10002;seq++) {
     send({type:'event',session_id:session.session_id,instance_id:session.instance_id,source_seq:seq,seq:0,event:{kind:seq===10002?'user_message':'agent_start',message_id:null,text:seq===10002?'Message after retention limit':null,tool_call_id:null,tool_name:null,is_error:false,truncated:false}});

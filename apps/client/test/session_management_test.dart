@@ -11,6 +11,7 @@ Map<String, dynamic> session(
   String state = 'idle',
 }) => {
   'snapshot': {
+    'agent_id': 'pi',
     'session_id': 's-$id',
     'instance_id': id,
     'cwd': '/tmp/$id',

@@ -4,6 +4,7 @@
   "message": {
     "type": "register",
     "session": {
+      "agent_id": "pi",
       "session_id": "session-1",
       "instance_id": "instance-1",
       "cwd": "/tmp/Pi café",

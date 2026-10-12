@@ -25,6 +25,8 @@ Messages use a versioned JSON envelope:
 
 Messages cover authentication, session registration and state, streaming events, event replay, control commands, history pagination, and remote directory operations. Session states are `idle`, `running`, `stopping`, and `offline`.
 
+Online and saved sessions carry an `agent_id`. Creation and restoration select an agent explicitly; saved-session identity is `(agent_id, session_id)`. The saved-session catalog also lists supported agents.
+
 Control requests identify and validate their target using the server generation, session ID, instance ID, and state revision. Request IDs support deduplication and result queries. Events carry the server `seq` and adapter `source_seq`.
 
 `History` supports `latest`, `before`, `after`, and `around`, using a content block's `first_seq` as the anchor. Pages include the retained range, previous/next page flags, and an event watermark. `TranscriptItem` provides stable block IDs and accumulated content.

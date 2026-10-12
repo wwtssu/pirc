@@ -79,3 +79,17 @@ test("authentication has no shared credential payload", () => {
   assert.deepEqual(decode(JSON.stringify(envelope)), envelope);
   assert.equal(decode(JSON.stringify({ ...envelope, message: { ...envelope.message, token: "obsolete" } })), null);
 });
+
+test("agent identity is required for registration and session launching", () => {
+  const registered = JSON.parse(readFileSync(new URL("../../packages/protocol/fixtures/register.json", import.meta.url), "utf8"));
+  assert.equal(registered.message.session.agent_id, "pi");
+  delete registered.message.session.agent_id;
+  assert.equal(decode(JSON.stringify(registered)), null);
+  const request = { version: 1, request_id: "launch", message: {
+    type: "launch_session", agent_id: "omp", generation_id: "g", cwd: "/workspace",
+    session_id: null, name: null, create_cwd: false,
+  }};
+  assert.deepEqual(decode(JSON.stringify(request)), request);
+  const { agent_id, ...missingIdentity } = request.message;
+  assert.equal(decode(JSON.stringify({...request, message: missingIdentity})), null);
+});

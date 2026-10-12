@@ -25,7 +25,7 @@ void main() {
                     endpoint: 'http://saved:43123',
                     initialName: 'Saved device',
                     initialBackupAddresses: ['http://backup:43123'],
-                    ),
+                  ),
                 );
               },
               child: const Text('open'),

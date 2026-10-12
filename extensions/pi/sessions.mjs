@@ -7,6 +7,7 @@ for (const session of sessions) {
   if (!session.cwd || seen.has(session.id)) continue;
   seen.add(session.id);
   result.push({
+    agent_id: "pi",
     session_id: session.id,
     cwd: session.cwd,
     name: session.name ?? null,

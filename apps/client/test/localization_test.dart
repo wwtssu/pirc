@@ -13,6 +13,7 @@ Map<String, dynamic> sessionFixture() => {
   'sessions': [
     {
       'snapshot': {
+        'agent_id': 'pi',
         'session_id': 'session',
         'instance_id': 'session',
         'cwd': '/workspace/example',

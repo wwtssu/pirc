@@ -247,6 +247,7 @@ try {
     (
       await request({
         type: "launch_session",
+        agent_id: "pi",
         generation_id: "old",
         cwd,
         session_id: null,
@@ -258,12 +259,13 @@ try {
     (
       await request({
         type: "launch_session",
+        agent_id: "pi",
         generation_id: welcome.message.generation_id,
         cwd: join(run, "missing"),
         session_id: null,
       })
     ).type,
-    "error",
+    "working_directory_missing",
   );
   assert.equal(
     existsSync(launches),

@@ -1,5 +1,7 @@
+use crate::agents::AgentAdapter;
+#[cfg(test)]
+use crate::agents::PiAdapter;
 use pirc_protocol::*;
-use serde::Deserialize;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -8,12 +10,6 @@ use std::{
 };
 use tokio::{process::Command, sync::Mutex};
 
-#[derive(Deserialize)]
-struct Stored {
-    #[serde(flatten)]
-    session: SavedSession,
-    path: PathBuf,
-}
 struct Launch {
     original: Message,
     result: Message,
@@ -23,10 +19,7 @@ struct Launch {
 pub struct Launcher {
     pub default_cwd: String,
     pub directories: crate::directories::DirectoryBrowser,
-    helper: PathBuf,
-    extension: PathBuf,
-    node: String,
-    pi: String,
+    agents: Vec<Box<dyn AgentAdapter>>,
     #[cfg(test)]
     terminal: Option<String>,
     headless: bool,
@@ -44,10 +37,7 @@ impl Launcher {
         Self {
             default_cwd: std::env::var("HOME").unwrap_or_else(|_| "/tmp".into()),
             directories: crate::directories::DirectoryBrowser::new(),
-            helper: root.join("scripts/pi-sessions.mjs"),
-            extension: root.join("extensions/pi/index.ts"),
-            node: "node".into(),
-            pi: "pi".into(),
+            agents: crate::agents::adapters(&root),
             #[cfg(test)]
             terminal: None,
             headless: cfg!(target_os = "linux")
@@ -57,39 +47,36 @@ impl Launcher {
             launches: Mutex::new(HashMap::new()),
         }
     }
-    async fn stored(&self) -> Result<Vec<Stored>, String> {
-        let output = tokio::time::timeout(
-            Duration::from_secs(15),
-            Command::new(&self.node)
-                .arg(&self.helper)
-                .kill_on_drop(true)
-                .output(),
-        )
-        .await
-        .map_err(|_| "Reading saved sessions timed out. Try again.")?
-        .map_err(|_| "Unable to read saved sessions. Check the device server.")?;
-        if !output.status.success() {
-            return Err("Unable to read saved sessions. Check the device server.".into());
-        }
-        serde_json::from_slice(&output.stdout)
-            .map_err(|_| "Unable to read saved session data".into())
+    fn adapter(&self, id: &str) -> Result<&dyn AgentAdapter, String> {
+        self.agents
+            .iter()
+            .find(|a| a.info().id == id)
+            .map(|a| a.as_ref())
+            .ok_or_else(|| "Agent is not supported by this device".into())
     }
-    pub async fn catalog(&self, online: &[String]) -> Result<Message, String> {
-        let sessions = self
-            .stored()
-            .await?
-            .into_iter()
-            .map(|s| s.session)
-            .filter(|s| !online.contains(&s.session_id))
-            .take(1000)
-            .collect();
+    pub async fn catalog(&self, online: &[(String, String)]) -> Result<Message, String> {
+        let mut sessions = Vec::new();
+        for adapter in &self.agents {
+            sessions.extend(
+                adapter
+                    .saved_sessions()
+                    .await?
+                    .into_iter()
+                    .map(|s| s.session)
+                    .filter(|s| !online.contains(&(s.agent_id.clone(), s.session_id.clone()))),
+            );
+        }
+        sessions.sort_by_key(|s| std::cmp::Reverse(s.modified_ms));
+        sessions.truncate(1000);
         Ok(Message::SavedSessionList {
+            agents: self.agents.iter().map(|a| a.info()).collect(),
             sessions,
             default_cwd: self.default_cwd.clone(),
         })
     }
     pub async fn launch(&self, id: &str, message: &Message) -> Result<Message, String> {
         let Message::LaunchSession {
+            agent_id,
             cwd,
             session_id,
             name,
@@ -99,6 +86,7 @@ impl Launcher {
         else {
             unreachable!()
         };
+        let adapter = self.adapter(agent_id)?;
         let name = name.as_deref().unwrap_or("").trim();
         if name.chars().count() > 256 || name.contains(['\0', '\n', '\r']) {
             return Err("Session name is too long or contains invalid characters".into());
@@ -123,7 +111,8 @@ impl Launcher {
         }
         let stored = if let Some(sid) = session_id {
             Some(
-                self.stored()
+                adapter
+                    .saved_sessions()
                     .await?
                     .into_iter()
                     .find(|s| s.session.session_id == *sid)
@@ -155,15 +144,8 @@ impl Launcher {
             Message::Error { detail, .. } => return Err(detail),
             _ => return Err("Unable to prepare the working directory".into()),
         }
-        if !self.extension.is_file() {
-            return Err("PiRC adapter not found. Check the device server installation.".into());
-        }
-        if stored.as_ref().is_some_and(|s| !s.path.is_file()) {
-            return Err("Session file no longer exists. Refresh the list.".into());
-        }
         let search_path = std::env::var_os("PATH").unwrap_or_default();
-        let pi = executable_path(&self.pi, &search_path)
-            .ok_or("Agent executable not found. Check the device installation.")?;
+        let args = adapter.command(stored.as_ref().map(|s| s.path.as_path()), &search_path)?;
         #[cfg(not(test))]
         let terminal: Option<&str> = None;
         #[cfg(test)]
@@ -177,14 +159,6 @@ impl Launcher {
         } else {
             None
         };
-        let mut args = vec![
-            pi.to_string_lossy().into_owned(),
-            "-e".into(),
-            self.extension.to_string_lossy().into_owned(),
-        ];
-        if let Some(s) = &stored {
-            args.extend(["--session".into(), s.path.to_string_lossy().into_owned()]);
-        }
         let script = terminal_script(
             &cwd.to_string_lossy(),
             &args,
@@ -193,6 +167,7 @@ impl Launcher {
             stored.is_some(),
             name,
             &search_path.to_string_lossy(),
+            adapter.environment_keys(),
         );
         let dir = std::env::temp_dir().join(format!("pirc-launches-{}", std::process::id()));
         tokio::fs::create_dir_all(&dir)
@@ -310,7 +285,7 @@ impl Launcher {
 fn quote(value: &str) -> String {
     format!("'{}'", value.replace('\'', "'\\''"))
 }
-fn executable_path(program: &str, search_path: &std::ffi::OsStr) -> Option<PathBuf> {
+pub(crate) fn executable_path(program: &str, search_path: &std::ffi::OsStr) -> Option<PathBuf> {
     let path = std::path::Path::new(program);
     let candidates = if path.is_absolute() || path.components().count() > 1 {
         vec![path.to_path_buf()]
@@ -349,7 +324,7 @@ fn terminal_profile(script: &str) -> String {
         .replace('<', "&lt;")
         .replace('>', "&gt;");
     // Terminal retains imported profiles after this one-shot script is consumed.
-    // Reopening a stale window must neither fail nor launch a second Pi process.
+    // Reopening a stale window must neither fail nor launch a second agent process.
     let script = quote(script);
     let command = format!("if [ -f {script} ]; then exec {script}; else exit 0; fi")
         .replace('&', "&amp;")
@@ -378,34 +353,116 @@ fn terminal_script(
     restore: bool,
     name: &str,
     search_path: &str,
+    environment_keys: &[&str],
 ) -> String {
     let shell = if cfg!(target_os = "macos") {
         "#!/bin/zsh -l"
     } else {
         "#!/bin/sh"
     };
-    let inherited = [
-        "PI_CODING_AGENT_DIR",
-        "PI_CODING_AGENT_SESSION_DIR",
-        "PI_OFFLINE",
-        "PI_TELEMETRY",
-    ]
-    .into_iter()
-    .map(|key| {
-        // An already-running Terminal may retain another launch's environment.
-        // Both configured and absent Pi overrides must match this Server.
-        match std::env::var(key) {
-            Ok(value) => format!("export {key}={}\n", quote(&value)),
-            Err(_) => format!("unset {key}\n"),
-        }
-    })
-    .collect::<String>();
+    let inherited = environment_keys
+        .iter()
+        .map(|key| {
+            // An already-running Terminal may retain another launch's environment.
+            // Both configured and absent agent overrides must match this server.
+            match std::env::var(key) {
+                Ok(value) => format!("export {key}={}\n", quote(&value)),
+                Err(_) => format!("unset {key}\n"),
+            }
+        })
+        .collect::<String>();
     format!("{shell}\n{inherited}export PATH={}\nexport PIRC_URL={}\nexport PIRC_LAUNCH_ID={}\nexport PIRC_INITIAL_NAME={}\nexport PIRC_MANAGED_TERMINAL=1\nexport PIRC_RESTORE_HISTORY={}\nrm -f -- \"${{0%.command}}.terminal\"\ncd {} || exit 1\nrm -- \"$0\"\nexec {}\n", quote(search_path), quote(url), quote(launch_id), quote(name), if restore { 1 } else { 0 }, quote(cwd), args.iter().map(|s| quote(s)).collect::<Vec<_>>().join(" "))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    struct FixtureAdapter(&'static str);
+    impl AgentAdapter for FixtureAdapter {
+        fn info(&self) -> AgentInfo {
+            AgentInfo {
+                id: self.0.into(),
+                name: self.0.into(),
+            }
+        }
+        fn environment_keys(&self) -> &[&str] {
+            &[]
+        }
+        fn command(
+            &self,
+            session: Option<&std::path::Path>,
+            _: &std::ffi::OsStr,
+        ) -> Result<Vec<String>, String> {
+            Ok(vec![
+                self.0.into(),
+                session.unwrap().to_string_lossy().into(),
+            ])
+        }
+        fn saved_sessions(
+            &self,
+        ) -> std::pin::Pin<
+            Box<
+                dyn std::future::Future<Output = Result<Vec<crate::agents::StoredSession>, String>>
+                    + Send
+                    + '_,
+            >,
+        > {
+            Box::pin(async move {
+                Ok(vec![crate::agents::StoredSession {
+                    session: SavedSession {
+                        agent_id: self.0.into(),
+                        session_id: "shared-id".into(),
+                        cwd: "/workspace".into(),
+                        name: None,
+                        modified_ms: 1,
+                    },
+                    path: PathBuf::from(format!("/history/{}", self.0)),
+                }])
+            })
+        }
+    }
+    #[tokio::test]
+    async fn catalog_keeps_same_session_id_from_another_agent() {
+        let mut launcher = Launcher::new(43123);
+        launcher.agents = vec![
+            Box::new(FixtureAdapter("first")),
+            Box::new(FixtureAdapter("second")),
+        ];
+        let Message::SavedSessionList {
+            agents, sessions, ..
+        } = launcher
+            .catalog(&[("first".into(), "shared-id".into())])
+            .await
+            .unwrap()
+        else {
+            panic!()
+        };
+        assert_eq!(agents.len(), 2);
+        assert_eq!(sessions.len(), 1);
+        assert_eq!(sessions[0].agent_id, "second");
+        let selected = launcher.adapter(&sessions[0].agent_id).unwrap();
+        let saved = selected.saved_sessions().await.unwrap();
+        assert_eq!(
+            selected
+                .command(Some(&saved[0].path), std::ffi::OsStr::new(""))
+                .unwrap(),
+            vec!["second", "/history/second"]
+        );
+        let unsupported = Message::LaunchSession {
+            agent_id: "unknown".into(),
+            generation_id: "g".into(),
+            cwd: "/does-not-exist".into(),
+            session_id: None,
+            name: None,
+            create_cwd: true,
+        };
+        assert_eq!(
+            launcher.launch("unknown", &unsupported).await.unwrap_err(),
+            "Agent is not supported by this device"
+        );
+        assert!(launcher.launches.lock().await.is_empty());
+    }
+
     #[cfg(unix)]
     #[tokio::test]
     async fn headless_launch_has_a_tty_and_removes_session_on_exit() {
@@ -434,16 +491,19 @@ mod tests {
         let launcher = Launcher {
             default_cwd: dir.to_string_lossy().into(),
             directories: crate::directories::DirectoryBrowser::new(),
-            helper: PathBuf::new(),
-            extension,
-            node: "node".into(),
-            pi: pi.to_string_lossy().into(),
+            agents: vec![Box::new(PiAdapter {
+                helper: PathBuf::new(),
+                extension,
+                node: "node".into(),
+                executable: pi.to_string_lossy().into(),
+            })],
             terminal: None,
             headless: true,
             port,
             launches: Mutex::new(HashMap::new()),
         };
         let message = Message::LaunchSession {
+            agent_id: "pi".into(),
             generation_id: "g".into(),
             cwd: dir.to_string_lossy().into(),
             session_id: None,
@@ -505,16 +565,19 @@ mod tests {
         let launcher = Launcher {
             default_cwd: dir.to_string_lossy().into(),
             directories: crate::directories::DirectoryBrowser::new(),
-            helper: PathBuf::new(),
-            extension,
-            node: "node".into(),
-            pi: terminal.to_string_lossy().into(),
+            agents: vec![Box::new(PiAdapter {
+                helper: PathBuf::new(),
+                extension,
+                node: "node".into(),
+                executable: terminal.to_string_lossy().into(),
+            })],
             terminal: Some(terminal.to_string_lossy().into()),
             headless: false,
             port: 43123,
             launches: Mutex::new(HashMap::new()),
         };
         let message = Message::LaunchSession {
+            agent_id: "pi".into(),
             generation_id: "g".into(),
             cwd: dir.to_string_lossy().into(),
             session_id: None,
@@ -529,6 +592,7 @@ mod tests {
         launcher.launch("second", &message).await.unwrap();
         assert_eq!(std::fs::read_to_string(&count).unwrap().lines().count(), 2);
         let other = Message::LaunchSession {
+            agent_id: "pi".into(),
             generation_id: "g".into(),
             cwd: "/".into(),
             session_id: None,
@@ -548,6 +612,7 @@ mod tests {
             false,
             "Title'`bad`",
             "/tmp/bin'`bad`:/usr/bin:/bin",
+            &[],
         );
         assert!(script.contains("cd '/tmp/a'\\''$(touch bad)'"));
         assert!(script.contains("export PIRC_INITIAL_NAME='Title'\\''`bad`'"));
@@ -585,6 +650,7 @@ mod tests {
                 false,
                 "",
                 &search_path,
+                PiAdapter::new(&dir).environment_keys(),
             ),
         )
         .unwrap();

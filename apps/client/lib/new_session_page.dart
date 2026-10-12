@@ -22,6 +22,8 @@ class _NewSessionPageState extends State<NewSessionPage> {
   final cwd = TextEditingController();
   final search = TextEditingController();
   List<SavedSession> sessions = [];
+  List<AgentInfo> agents = [];
+  String? agentId;
   bool loading = true;
   bool launching = false;
   String? error;
@@ -55,6 +57,10 @@ class _NewSessionPageState extends State<NewSessionPage> {
       if (!mounted) return;
       setState(() {
         sessions = catalog.sessions;
+        agents = catalog.agents;
+        if (!agents.any((a) => a.id == agentId)) {
+          agentId = agents.isEmpty ? null : agents.first.id;
+        }
         if (cwd.text.isEmpty) cwd.text = catalog.defaultCwd;
       });
     } catch (failure) {
@@ -69,7 +75,7 @@ class _NewSessionPageState extends State<NewSessionPage> {
   Future<void> launch([SavedSession? session]) async {
     if (launching ||
         widget.model.connection != 'connected' ||
-        (session == null && cwd.text.trim().isEmpty)) {
+        (session == null && (agentId == null || cwd.text.trim().isEmpty))) {
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -78,17 +84,20 @@ class _NewSessionPageState extends State<NewSessionPage> {
       error = null;
     });
     String? name;
+    var launchAgent = session?.agentId ?? agentId!;
     if (session == null) {
-      final entered = await showDialog<String>(
+      final entered = await showDialog<({String name, String agentId})>(
         context: context,
-        builder: (_) => const _CreationNameDialog(),
+        builder: (_) =>
+            _CreationNameDialog(agents: agents, initialAgentId: launchAgent),
       );
       if (!mounted) return;
       if (entered == null) {
         setState(() => launching = false);
         return;
       }
-      name = entered.isEmpty ? null : entered;
+      name = entered.name.isEmpty ? null : entered.name;
+      launchAgent = entered.agentId;
     }
     FocusManager.instance.primaryFocus?.unfocus();
     final failureText = ValueNotifier<String?>(null);
@@ -199,6 +208,7 @@ class _NewSessionPageState extends State<NewSessionPage> {
           instance = await widget.model
               .launchSession(
                 session?.cwd ?? cwd.text.trim(),
+                agentId: launchAgent,
                 sessionId: session?.id,
                 name: name,
                 createCwd: createCwd,
@@ -256,12 +266,15 @@ class _NewSessionPageState extends State<NewSessionPage> {
   @override
   Widget build(BuildContext context) {
     final enabled = !launching && widget.model.connection == 'connected';
-    final online = widget.model.onlineSessions.map((s) => s.session).toSet();
+    final online = widget.model.onlineSessions
+        .map((s) => (s.agentId, s.session))
+        .toSet();
     final query = search.text.trim().toLowerCase();
     final saved = sessions
         .where(
           (s) =>
-              !online.contains(s.id) &&
+              s.agentId == agentId &&
+              !online.contains((s.agentId, s.id)) &&
               '${s.name?.isNotEmpty == true ? s.name : context.l10n.unnamedSession} ${s.cwd}'
                   .toLowerCase()
                   .contains(query),
@@ -294,22 +307,16 @@ class _NewSessionPageState extends State<NewSessionPage> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          context.l10n.startConversation,
-                          style: context.pircText.section,
-                        ),
-                        const SizedBox(height: PircSpacing.s8),
-                        Text(
-                          context.l10n.chooseDirectoryDescription,
+                          context.l10n.workingDirectory,
                           style: context.pircText.hint,
                         ),
-                        const SizedBox(height: PircSpacing.s16),
+                        const SizedBox(height: PircSpacing.s10),
                         TextField(
                           key: const Key('new-session-cwd'),
                           controller: cwd,
                           enabled: !launching,
                           decoration: InputDecoration(
-                            labelText: context.l10n.workingDirectory,
-                            hintText: '/Users/…/project',
+                            hintText: '/path/to/project',
                             prefixIcon: const Icon(LucideIcons.folder),
                             suffixIcon: IconButton(
                               key: const Key('browse-remote-directory'),
@@ -329,7 +336,10 @@ class _NewSessionPageState extends State<NewSessionPage> {
                         const SizedBox(height: PircSpacing.s12),
                         FilledButton.icon(
                           key: const Key('launch-new-session'),
-                          onPressed: enabled && cwd.text.trim().isNotEmpty
+                          onPressed:
+                              enabled &&
+                                  agentId != null &&
+                                  cwd.text.trim().isNotEmpty
                               ? () => launch()
                               : null,
                           icon: const Icon(
@@ -368,11 +378,52 @@ class _NewSessionPageState extends State<NewSessionPage> {
                             ),
                           ],
                         ),
-                        Text(
-                          context.l10n.restoreDescription,
-                          style: context.pircText.hint,
-                        ),
-                        const SizedBox(height: PircSpacing.s12),
+                        if (agents.length > 1) ...[
+                          Wrap(
+                            spacing: PircSpacing.s8,
+                            runSpacing: PircSpacing.s8,
+                            children: [
+                              for (final agent in agents)
+                                ChoiceChip(
+                                  key: ValueKey('agent-${agent.id}'),
+                                  label: Text(
+                                    agent.name,
+                                    style: context.pircText.description
+                                        .copyWith(
+                                          color: agent.id == agentId
+                                              ? context.pircColors.primary
+                                              : context.pircColors.onSurface,
+                                        ),
+                                  ),
+                                  selected: agent.id == agentId,
+                                  showCheckmark: false,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: PircSpacing.s4,
+                                  ),
+                                  labelPadding: const EdgeInsets.symmetric(
+                                    horizontal: PircSpacing.s12,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                  materialTapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  selectedColor:
+                                      context.pircColors.primaryContainer,
+                                  backgroundColor: context.pircColors.surface,
+                                  side: BorderSide(
+                                    color: agent.id == agentId
+                                        ? context.pircColors.primary
+                                        : context.pircColors.outlineVariant,
+                                  ),
+                                  shape: const StadiumBorder(),
+                                  onSelected: enabled
+                                      ? (_) =>
+                                            setState(() => agentId = agent.id)
+                                      : null,
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: PircSpacing.s12),
+                        ],
                         TextField(
                           key: const Key('saved-session-search'),
                           controller: search,
@@ -458,7 +509,7 @@ class _SavedSessionTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        key: Key('restore-${session.id}'),
+        key: ValueKey(('restore', session.agentId, session.id)),
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(PircSpacing.s16),
@@ -512,7 +563,12 @@ class _SavedSessionTile extends StatelessWidget {
 }
 
 class _CreationNameDialog extends StatefulWidget {
-  const _CreationNameDialog();
+  const _CreationNameDialog({
+    required this.agents,
+    required this.initialAgentId,
+  });
+  final List<AgentInfo> agents;
+  final String initialAgentId;
 
   @override
   State<_CreationNameDialog> createState() => _CreationNameDialogState();
@@ -520,6 +576,7 @@ class _CreationNameDialog extends StatefulWidget {
 
 class _CreationNameDialogState extends State<_CreationNameDialog> {
   final name = TextEditingController();
+  late String agentId = widget.initialAgentId;
 
   @override
   void dispose() {
@@ -527,7 +584,8 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
     super.dispose();
   }
 
-  void submit() => Navigator.pop(context, name.text.trim());
+  void submit() =>
+      Navigator.pop(context, (name: name.text.trim(), agentId: agentId));
 
   @override
   Widget build(BuildContext context) => Dialog(
@@ -541,7 +599,7 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              context.l10n.newConversationName,
+              context.l10n.createConversation,
               style: context.pircText.cardTitle,
             ),
             const SizedBox(height: PircSpacing.s16),
@@ -563,11 +621,39 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
                       style: context.pircText.hint,
                     ),
               decoration: InputDecoration(
+                labelText: context.l10n.sessionName,
                 hintText: context.l10n.unnamedSession,
               ),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => submit(),
             ),
+            if (widget.agents.length > 1) ...[
+              const SizedBox(height: PircSpacing.s16),
+              DropdownButtonFormField<String>(
+                key: const Key('create-session-agent'),
+                initialValue: agentId,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: 'Agent'),
+                icon: const Icon(
+                  LucideIcons.chevronDown,
+                  size: PircIconSizes.chevron,
+                ),
+                items: [
+                  for (final agent in widget.agents)
+                    DropdownMenuItem(
+                      value: agent.id,
+                      child: Text(
+                        agent.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => agentId = value);
+                },
+              ),
+            ],
             const SizedBox(height: PircSpacing.s20),
             Wrap(
               alignment: WrapAlignment.end,

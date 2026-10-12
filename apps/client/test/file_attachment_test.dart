@@ -11,6 +11,7 @@ void main() {
       final model = PircController()..connection = 'connected';
       final session = SessionView({
         'snapshot': {
+          'agent_id': 'pi',
           'session_id': 's',
           'instance_id': 'i',
           'state': 'idle',

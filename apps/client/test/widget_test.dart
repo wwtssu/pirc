@@ -26,6 +26,7 @@ String view({
     for (final id in ['one', 'two'])
       {
         'snapshot': {
+          'agent_id': 'pi',
           'session_id': id,
           'instance_id': id,
           'cwd': '/tmp/$id',

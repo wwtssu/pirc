@@ -134,6 +134,7 @@ pub struct UiPrompt {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct SessionSnapshot {
+    pub agent_id: String,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub capabilities: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -153,7 +154,7 @@ pub struct SessionSnapshot {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub launch_id: Option<String>,
-    /// Extension supports graceful exit for this Server-launched terminal.
+    /// Adapter supports graceful exit for this Server-launched terminal.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub can_close: Option<bool>,
@@ -161,7 +162,15 @@ pub struct SessionSnapshot {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
+pub struct AgentInfo {
+    pub id: String,
+    pub name: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
 pub struct SavedSession {
+    pub agent_id: String,
     pub session_id: String,
     pub cwd: String,
     pub name: Option<String>,
@@ -310,6 +319,7 @@ pub enum Message {
     },
     SavedSessions {},
     SavedSessionList {
+        agents: Vec<AgentInfo>,
         sessions: Vec<SavedSession>,
         default_cwd: String,
     },
@@ -361,6 +371,7 @@ pub enum Message {
         offset: u32,
     },
     LaunchSession {
+        agent_id: String,
         generation_id: String,
         cwd: String,
         session_id: Option<String>,

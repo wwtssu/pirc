@@ -38,6 +38,7 @@ Map<String, dynamic> sessionView({
   'sessions': [
     {
       'snapshot': <String, dynamic>{
+        'agent_id': 'pi',
         'session_id': 's',
         'instance_id': 'i',
         'cwd': '/tmp/test',
@@ -95,6 +96,42 @@ Future<void> sheet(
 }
 
 void main() {
+  testWidgets('unsupported settings are hidden and reasoning can stand alone', (
+    tester,
+  ) async {
+    final model = PircController();
+    final view = sessionView();
+    final snapshot = (view['sessions'] as List).first['snapshot'] as Map;
+    snapshot['slash_commands'] = [];
+    model.applyDecodedView(view);
+    await tester.pumpWidget(PircApp(controller: model));
+    await tester.tap(find.byKey(const Key('session-i')));
+    await tester.pump();
+    expect(find.byKey(const Key('session-model')), findsNothing);
+    expect(find.byKey(const Key('session-thinking')), findsNothing);
+    snapshot['slash_commands'] = [
+      {'name': 'thinking', 'source': 'builtin'},
+    ];
+    snapshot['controls']['model'] = null;
+    model.applyDecodedView(view);
+    await tester.pump();
+    expect(find.byKey(const Key('session-model')), findsNothing);
+    expect(find.byKey(const Key('session-thinking')), findsOneWidget);
+    expect(
+      tester
+          .widget<InkWell>(
+            find.descendant(
+              of: find.byKey(const Key('session-thinking')),
+              matching: find.byType(InkWell),
+            ),
+          )
+          .onTap,
+      isNotNull,
+    );
+    await tester.pumpWidget(const SizedBox());
+    model.dispose();
+  });
+
   testWidgets('session header reflects Pi state and updates while running', (
     tester,
   ) async {

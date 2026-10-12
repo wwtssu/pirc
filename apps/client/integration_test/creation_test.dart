@@ -70,10 +70,13 @@ void main() {
         await tester.tap(find.byKey(const Key('create-session')));
         await tester.pump();
         await wait(
-          () => find.byKey(Key('restore-$saved')).evaluate().isNotEmpty,
+          () => find
+              .byKey(ValueKey(('restore', 'pi', saved)))
+              .evaluate()
+              .isNotEmpty,
           'real Pi saved history listed',
         );
-        await tester.tap(find.byKey(Key('restore-$saved')));
+        await tester.tap(find.byKey(ValueKey(('restore', 'pi', saved))));
         await tester.pump();
         await wait(
           () =>
@@ -118,7 +121,7 @@ void main() {
         );
         await tester.pumpAndSettle();
         expect(
-          find.byKey(Key('restore-$saved')),
+          find.byKey(ValueKey(('restore', 'pi', saved))),
           findsNothing,
           reason: 'Online session is excluded from restore catalog',
         );
@@ -195,7 +198,10 @@ void main() {
         await tester.tap(find.byKey(const Key('create-session')));
         await tester.pump();
         await wait(
-          () => find.byKey(Key('restore-$saved')).evaluate().isNotEmpty,
+          () => find
+              .byKey(ValueKey(('restore', 'pi', saved)))
+              .evaluate()
+              .isNotEmpty,
           'closed session becomes restorable again',
         );
         await tester.pumpAndSettle();

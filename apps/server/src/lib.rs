@@ -15,6 +15,7 @@ use std::{
 };
 use tokio::sync::{broadcast, mpsc, Mutex};
 use uuid::Uuid;
+mod agents;
 mod approval;
 mod attachments;
 mod directories;
@@ -373,7 +374,8 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
     let mut r = app.inner.lock().await;
     match &e.message {
         Message::Register { session } => {
-            if session.session_id.is_empty()
+            if session.agent_id.is_empty()
+                || session.session_id.is_empty()
                 || session.instance_id.is_empty()
                 || session.state == SessionState::Offline
             {
@@ -391,7 +393,9 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
                         "Instance has been retired",
                     )];
                 }
-                if live.snapshot.session_id != session.session_id {
+                if live.snapshot.session_id != session.session_id
+                    || live.snapshot.agent_id != session.agent_id
+                {
                     return vec![error(
                         &e.request_id,
                         "IDENTITY_MISMATCH",
@@ -443,7 +447,10 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
         }
         Message::Snapshot { session } | Message::Heartbeat { session, .. } => {
             if let Some(live) = r.sessions.get_mut(&session.instance_id).filter(|s| {
-                s.owner == owner && !s.retired && s.snapshot.session_id == session.session_id
+                s.owner == owner
+                    && !s.retired
+                    && s.snapshot.agent_id == session.agent_id
+                    && s.snapshot.session_id == session.session_id
             }) {
                 if let Message::Heartbeat { source_seq, .. } = e.message {
                     if source_seq > live.source_seq {
@@ -768,12 +775,13 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
                     .catalog(
                         &online
                             .iter()
-                            .map(|s| s.session_id.clone())
+                            .map(|s| (s.agent_id.clone(), s.session_id.clone()))
                             .collect::<Vec<_>>(),
                     )
                     .await
             }
             Message::LaunchSession {
+                agent_id,
                 generation_id,
                 session_id,
                 ..
@@ -787,7 +795,7 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
                 }
                 if let Some(session) = online
                     .iter()
-                    .find(|s| session_id.as_ref() == Some(&s.session_id))
+                    .find(|s| &s.agent_id == agent_id && session_id.as_ref() == Some(&s.session_id))
                 {
                     Ok(Message::SessionLaunched {
                         launch_id: e.request_id.clone(),
@@ -1497,6 +1505,7 @@ mod tests {
     }
     fn session() -> SessionSnapshot {
         SessionSnapshot {
+            agent_id: "pi".into(),
             capabilities: vec![],
             ui_prompt: None,
             session_id: "s".into(),
@@ -1512,6 +1521,77 @@ mod tests {
             can_close: None,
         }
     }
+    #[tokio::test]
+    async fn restoring_another_agent_cannot_reuse_an_online_session_id() {
+        let app = app();
+        let (tx, _rx) = mpsc::channel(8);
+        from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Register { session: session() }),
+        )
+        .await;
+        let request = |agent: &str| {
+            packet(Message::LaunchSession {
+                agent_id: agent.into(),
+                generation_id: "g".into(),
+                cwd: "/tmp".into(),
+                session_id: Some("s".into()),
+                name: None,
+                create_cwd: false,
+            })
+        };
+        let existing = from_control(&app, request("pi")).await;
+        assert!(
+            matches!(&existing[0].message, Message::SessionLaunched { instance_id: Some(id), .. } if id == "i")
+        );
+        let unrelated = from_control(&app, request("other")).await;
+        assert!(
+            matches!(&unrelated[0].message, Message::Error { code, .. } if code == "SESSION_LAUNCH_ERROR")
+        );
+    }
+
+    #[tokio::test]
+    async fn instance_cannot_change_agent_identity() {
+        let app = app();
+        let (tx, _rx) = mpsc::channel(8);
+        let mut snapshot = session();
+        from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Register {
+                session: snapshot.clone(),
+            }),
+        )
+        .await;
+        snapshot.agent_id = "another-agent".into();
+        let result = from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Register {
+                session: snapshot.clone(),
+            }),
+        )
+        .await;
+        assert!(
+            matches!(&result[0].message, Message::Error { code, .. } if code == "IDENTITY_MISMATCH")
+        );
+        from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Heartbeat {
+                session: snapshot,
+                source_seq: 0,
+            }),
+        )
+        .await;
+        assert_eq!(app.inner.lock().await.sessions["i"].snapshot.agent_id, "pi");
+    }
+
     #[tokio::test]
     async fn retired_instance_cannot_return_online() {
         let app = app();
