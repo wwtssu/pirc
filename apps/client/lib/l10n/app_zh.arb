@@ -355,5 +355,9 @@
   "commandCacheFull": "命令缓存已满",
   "commandForwarded": "命令已转发，完成状态未确认",
   "pairingConnectionFailed": "无法连接设备",
-  "pairingConnectionTimedOut": "配对连接超时，请确认服务端已运行后重试。"
+  "pairingConnectionTimedOut": "配对连接超时，请确认服务端已运行后重试。",
+  "createWorkingDirectoryQuestion": "创建工作目录？",
+  "createWorkingDirectoryDescription": "此目录不存在。是否创建此目录及缺失的上级目录后继续？",
+  "createAndContinue": "创建并继续",
+  "workingDirectoryNotDirectory": "工作目录路径指向的不是文件夹。"
 }

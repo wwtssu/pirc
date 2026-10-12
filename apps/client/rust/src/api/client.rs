@@ -66,9 +66,15 @@ pub async fn launch_session(
     cwd: String,
     session_id: Option<String>,
     name: Option<String>,
+    create_cwd: bool,
 ) -> Result<String, String> {
-    serde_json::to_string(&client.inner.launch_session(cwd, session_id, name).await?)
-        .map_err(|e| e.to_string())
+    serde_json::to_string(
+        &client
+            .inner
+            .launch_session(cwd, session_id, name, create_cwd)
+            .await?,
+    )
+    .map_err(|e| e.to_string())
 }
 pub async fn create_directory(
     client: &PircClient,

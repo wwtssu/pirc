@@ -92,6 +92,8 @@ class _NewSessionPageState extends State<NewSessionPage> {
     }
     FocusManager.instance.primaryFocus?.unfocus();
     final failureText = ValueNotifier<String?>(null);
+    String? missingDirectory;
+    Completer<bool>? createDecision;
     final navigator = Navigator.of(context, rootNavigator: true);
     final route = DialogRoute<void>(
       context: context,
@@ -123,18 +125,56 @@ class _NewSessionPageState extends State<NewSessionPage> {
                       )
                     else ...[
                       Text(
-                        context.l10n.sessionNotConfirmed,
+                        missingDirectory == null
+                            ? context.l10n.sessionNotConfirmed
+                            : context.l10n.createWorkingDirectoryQuestion,
                         style: context.pircText.cardTitle,
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: PircSpacing.s12),
                       Text(
-                        context.localize(failure),
+                        missingDirectory == null
+                            ? context.localize(failure)
+                            : context.l10n.createWorkingDirectoryDescription,
                         style: context.pircText.hint,
                         textAlign: TextAlign.center,
                       ),
                     ],
-                    if (failure != null) ...[
+                    if (missingDirectory != null) ...[
+                      const SizedBox(height: PircSpacing.s12),
+                      Text(
+                        missingDirectory,
+                        key: const Key('missing-working-directory'),
+                        style: context.pircText.hint,
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: PircSpacing.s20),
+                      OverflowBar(
+                        alignment: MainAxisAlignment.end,
+                        spacing: PircSpacing.s8,
+                        overflowSpacing: PircSpacing.s8,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              if (createDecision?.isCompleted == false) {
+                                createDecision?.complete(false);
+                              }
+                              Navigator.pop(context);
+                            },
+                            child: Text(context.l10n.cancel),
+                          ),
+                          FilledButton(
+                            key: const Key('create-working-directory'),
+                            onPressed: () {
+                              if (createDecision?.isCompleted == false) {
+                                createDecision?.complete(true);
+                              }
+                            },
+                            child: Text(context.l10n.createAndContinue),
+                          ),
+                        ],
+                      ),
+                    ] else if (failure != null) ...[
                       const SizedBox(height: PircSpacing.s20),
                       FilledButton(
                         key: const Key('dismiss-session-launch-error'),
@@ -152,21 +192,42 @@ class _NewSessionPageState extends State<NewSessionPage> {
     );
     final closed = navigator.push(route);
     try {
-      final instance = await widget.model
-          .launchSession(
-            session?.cwd ?? cwd.text.trim(),
-            sessionId: session?.id,
-            name: name,
-          )
-          .timeout(
-            const Duration(seconds: 60),
-            onTimeout: () => throw StateError(
-              'Timed out waiting for the session. The terminal may already be open. Check the device and refresh the session list before creating another session.',
-            ),
-          );
+      var createCwd = false;
+      String? instance;
+      while (instance == null) {
+        try {
+          instance = await widget.model
+              .launchSession(
+                session?.cwd ?? cwd.text.trim(),
+                sessionId: session?.id,
+                name: name,
+                createCwd: createCwd,
+              )
+              .timeout(
+                const Duration(seconds: 60),
+                onTimeout: () => throw StateError(
+                  'Timed out waiting for the session. The terminal may already be open. Check the device and refresh the session list before creating another session.',
+                ),
+              );
+        } on MissingWorkingDirectory catch (missing) {
+          missingDirectory = missing.path;
+          createDecision = Completer<bool>();
+          failureText.value = '';
+          final accepted = await Future.any([
+            createDecision.future,
+            closed.then((_) => false),
+          ]);
+          if (!accepted || !mounted) return;
+          createCwd = true;
+          missingDirectory = null;
+          createDecision = null;
+          failureText.value = null;
+        }
+      }
       if (route.isActive) navigator.removeRoute(route);
       if (mounted) Navigator.pop(context, instance);
     } catch (failure) {
+      missingDirectory = null;
       failureText.value = '$failure'.replaceFirst('Bad state: ', '');
       await closed;
     } finally {

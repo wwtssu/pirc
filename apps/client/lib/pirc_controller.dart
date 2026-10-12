@@ -116,6 +116,11 @@ class RemoteDirectoryPage {
   final String? nextCursor;
 }
 
+class MissingWorkingDirectory implements Exception {
+  const MissingWorkingDirectory(this.path);
+  final String path;
+}
+
 class PircController extends ChangeNotifier {
   PircController({this.preferences});
   final SharedPreferences? preferences;
@@ -221,6 +226,7 @@ class PircController extends ChangeNotifier {
     String cwd, {
     String? sessionId,
     String? name,
+    bool createCwd = false,
   }) async {
     final client = _client;
     if (client == null || connection != 'connected') {
@@ -235,6 +241,7 @@ class PircController extends ChangeNotifier {
             cwd: cwd,
             sessionId: sessionId,
             name: name,
+            createCwd: createCwd,
           )
           .timeout(
             const Duration(seconds: 15),
@@ -243,6 +250,9 @@ class PircController extends ChangeNotifier {
             ),
           ),
     ) as Map<String, dynamic>;
+    if (result['type'] == 'working_directory_missing') {
+      throw MissingWorkingDirectory(result['path'] as String);
+    }
     final ready = Completer<String>();
     void check() {
       if (ready.isCompleted) return;

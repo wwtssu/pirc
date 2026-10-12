@@ -136,6 +136,7 @@ abstract class RustLibApi extends BaseApi {
     required String cwd,
     String? sessionId,
     String? name,
+    required bool createCwd,
   });
 
   Future<void> crateApiClientLoadHistory({
@@ -576,6 +577,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
     required String cwd,
     String? sessionId,
     String? name,
+    required bool createCwd,
   }) {
     return handler.executeNormal(
       NormalTask(
@@ -588,6 +590,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           sse_encode_String(cwd, serializer);
           sse_encode_opt_String(sessionId, serializer);
           sse_encode_opt_String(name, serializer);
+          sse_encode_bool(createCwd, serializer);
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
@@ -600,7 +603,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           decodeErrorData: sse_decode_String,
         ),
         constMeta: kCrateApiClientLaunchSessionConstMeta,
-        argValues: [client, cwd, sessionId, name],
+        argValues: [client, cwd, sessionId, name, createCwd],
         apiImpl: this,
       ),
     );
@@ -609,7 +612,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   TaskConstMeta get kCrateApiClientLaunchSessionConstMeta =>
       const TaskConstMeta(
         debugName: "launch_session",
-        argNames: ["client", "cwd", "sessionId", "name"],
+        argNames: ["client", "cwd", "sessionId", "name", "createCwd"],
       );
 
   @override

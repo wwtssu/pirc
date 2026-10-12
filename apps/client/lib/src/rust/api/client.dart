@@ -57,11 +57,13 @@ Future<String> launchSession({
   required String cwd,
   String? sessionId,
   String? name,
+  required bool createCwd,
 }) => RustLib.instance.api.crateApiClientLaunchSession(
   client: client,
   cwd: cwd,
   sessionId: sessionId,
   name: name,
+  createCwd: createCwd,
 );
 
 Future<String> createDirectory({

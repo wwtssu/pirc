@@ -18,9 +18,31 @@ class CreationController extends PircController {
   @override
   Future<SavedSessionCatalog> loadSavedSessions() => catalog.future;
   @override
-  Future<String> launchSession(String cwd, {String? sessionId, String? name}) {
+  Future<String> launchSession(
+    String cwd, {
+    String? sessionId,
+    String? name,
+    bool createCwd = false,
+  }) {
     calls.add((cwd, sessionId));
     names.add(name);
+    return launched.future;
+  }
+}
+
+class MissingDirectoryController extends CreationController {
+  final createFlags = <bool>[];
+  @override
+  Future<String> launchSession(
+    String cwd, {
+    String? sessionId,
+    String? name,
+    bool createCwd = false,
+  }) {
+    calls.add((cwd, sessionId));
+    names.add(name);
+    createFlags.add(createCwd);
+    if (!createCwd) return Future.error(MissingWorkingDirectory(cwd));
     return launched.future;
   }
 }
@@ -52,6 +74,65 @@ SavedSession saved(String id, String name) => SavedSession({
   'modified_ms': 1700000000000,
 });
 void main() {
+  for (final confirm in [true, false]) {
+    testWidgets(
+      'missing history directory ${confirm ? 'is created after confirmation' : 'is not created when cancelled'}',
+      (tester) async {
+        final model = MissingDirectoryController()..connection = 'connected';
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
+            theme: pircTheme(),
+            home: NewSessionPage(model: model),
+          ),
+        );
+        model.catalog.complete(
+          SavedSessionCatalog(
+            sessions: [
+              SavedSession({
+                'session_id': 'history',
+                'cwd': '/missing/parent/project',
+                'name': 'History',
+                'modified_ms': 1,
+              }),
+            ],
+            defaultCwd: '/remote/home',
+          ),
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('History'));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(find.text('Create working directory?'), findsOneWidget);
+        expect(
+          find.byKey(const Key('missing-working-directory')),
+          findsOneWidget,
+        );
+        expect(model.createFlags, [false]);
+        if (confirm) {
+          await tester.tap(find.byKey(const Key('create-working-directory')));
+          await tester.pump();
+          expect(model.createFlags, [false, true]);
+          expect(model.calls.last, ('/missing/parent/project', 'history'));
+          model.launched.completeError(StateError('Test launch failure'));
+          await tester.pump();
+          await tester.tap(
+            find.byKey(const Key('dismiss-session-launch-error')),
+          );
+        } else {
+          await tester.tap(find.text('Cancel'));
+        }
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('session-launch-dialog')), findsNothing);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        model.dispose();
+      },
+    );
+  }
+
   testWidgets(
     'returning to the list only ends viewing and keeps the session and draft',
     (tester) async {

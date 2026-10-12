@@ -214,6 +214,8 @@ extension PircLocalization on BuildContext {
       "Add alternative address" => l10n.addBackupAddress,
       "Pairing connection timed out. Check that the server is running and try again." =>
         l10n.pairingConnectionTimedOut,
+      "Working directory path is not a directory." =>
+        l10n.workingDirectoryNotDirectory,
       "Pair this device again?" => l10n.repairDeviceQuestion,
       "Pair again using the saved connection addresses. Approve the connection on the server." =>
         l10n.repairDeviceDescription,

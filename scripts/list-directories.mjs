@@ -1,4 +1,4 @@
-import { opendir, mkdir } from "node:fs/promises";
+import { opendir, mkdir, stat } from "node:fs/promises";
 import path from "node:path";
 
 // Only the directory explicitly requested is opened. In particular, don't stat
@@ -24,6 +24,18 @@ async function browse() {
   )
     return fail("INVALID_DIRECTORY", "Enter an absolute directory path on the device");
   folder = path.normalize(folder);
+  if (operation === "prepare") {
+    try {
+      const info = await stat(folder);
+      if (!info.isDirectory()) return fail("INVALID_DIRECTORY", "Working directory path is not a directory.");
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+      if (name !== "true") return { type: "working_directory_missing", path: folder };
+      await mkdir(folder, { recursive: true });
+      if (!(await stat(folder)).isDirectory()) return fail("INVALID_DIRECTORY", "Working directory path is not a directory.");
+    }
+    return { type: "working_directory_ready", path: folder };
+  }
   if (operation === "create") {
     if (
       !name.trim() ||

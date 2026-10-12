@@ -93,6 +93,7 @@ impl Launcher {
             cwd,
             session_id,
             name,
+            create_cwd,
             ..
         } = message
         else {
@@ -141,10 +142,18 @@ impl Launcher {
         } else {
             PathBuf::from(cwd)
         };
-        if !cwd.is_absolute() || !cwd.is_dir() {
-            return Err(
-                "Working directory does not exist. Enter a directory on the device.".into(),
-            );
+        if !cwd.is_absolute() {
+            return Err("Enter an absolute directory path on the device".into());
+        }
+        match self
+            .directories
+            .prepare(&cwd.to_string_lossy(), *create_cwd)
+            .await
+        {
+            Message::WorkingDirectoryReady { .. } => {}
+            missing @ Message::WorkingDirectoryMissing { .. } => return Ok(missing),
+            Message::Error { detail, .. } => return Err(detail),
+            _ => return Err("Unable to prepare the working directory".into()),
         }
         if !self.extension.is_file() {
             return Err("PiRC adapter not found. Check the device server installation.".into());
@@ -439,6 +448,7 @@ mod tests {
             cwd: dir.to_string_lossy().into(),
             session_id: None,
             name: None,
+            create_cwd: false,
         };
         let first = launcher.launch("headless", &message).await.unwrap();
         assert_eq!(launcher.launch("headless", &message).await.unwrap(), first);
@@ -509,6 +519,7 @@ mod tests {
             cwd: dir.to_string_lossy().into(),
             session_id: None,
             name: None,
+            create_cwd: false,
         };
         let first = launcher.launch("first", &message).await.unwrap();
         assert_eq!(launcher.launch("first", &message).await.unwrap(), first);
@@ -522,6 +533,7 @@ mod tests {
             cwd: "/".into(),
             session_id: None,
             name: None,
+            create_cwd: false,
         };
         assert!(launcher.launch("first", &other).await.is_err());
         std::fs::remove_dir_all(dir).unwrap();

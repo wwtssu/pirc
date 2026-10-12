@@ -75,6 +75,7 @@ impl Client {
         cwd: String,
         session_id: Option<String>,
         name: Option<String>,
+        create_cwd: bool,
     ) -> Result<Message, String> {
         let generation_id = self
             .view()
@@ -85,6 +86,7 @@ impl Client {
             cwd,
             session_id,
             name,
+            create_cwd,
         })
         .await
     }

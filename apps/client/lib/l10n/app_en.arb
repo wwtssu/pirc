@@ -464,5 +464,9 @@
   "commandCacheFull": "Command cache is full",
   "commandForwarded": "Command forwarded; completion not confirmed",
   "pairingConnectionFailed": "Unable to connect for pairing",
-  "pairingConnectionTimedOut": "Pairing connection timed out. Check that the server is running and try again."
+  "pairingConnectionTimedOut": "Pairing connection timed out. Check that the server is running and try again.",
+  "createWorkingDirectoryQuestion": "Create working directory?",
+  "createWorkingDirectoryDescription": "This directory does not exist. Create it and any missing parent directories, then continue?",
+  "createAndContinue": "Create and continue",
+  "workingDirectoryNotDirectory": "Working directory path is not a directory."
 }

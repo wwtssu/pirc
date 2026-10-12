@@ -561,6 +561,7 @@ fn wire__crate__api__client__launch_session_impl(
             let api_cwd = <String>::sse_decode(&mut deserializer);
             let api_session_id = <Option<String>>::sse_decode(&mut deserializer);
             let api_name = <Option<String>>::sse_decode(&mut deserializer);
+            let api_create_cwd = <bool>::sse_decode(&mut deserializer);
             deserializer.end();
             move |context| async move {
                 transform_result_sse::<_, String>(
@@ -589,6 +590,7 @@ fn wire__crate__api__client__launch_session_impl(
                             api_cwd,
                             api_session_id,
                             api_name,
+                            api_create_cwd,
                         )
                         .await?;
                         Ok(output_ok)

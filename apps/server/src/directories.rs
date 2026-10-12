@@ -26,7 +26,7 @@ impl DirectoryBrowser {
         cursor: Option<&str>,
         show_hidden: bool,
     ) -> Message {
-        self.run(path, cursor, show_hidden, None).await
+        self.run(path, cursor, show_hidden, None, None).await
     }
     pub async fn create(&self, parent: &str, name: &str) -> Message {
         if name.trim().is_empty()
@@ -47,7 +47,10 @@ impl DirectoryBrowser {
                 detail: "Open the parent directory before creating a folder".into(),
             };
         }
-        self.run(Some(parent), None, false, Some(name)).await
+        self.run(Some(parent), None, false, Some(name), None).await
+    }
+    pub async fn prepare(&self, path: &str, create: bool) -> Message {
+        self.run(Some(path), None, false, None, Some(create)).await
     }
     async fn run(
         &self,
@@ -55,6 +58,7 @@ impl DirectoryBrowser {
         cursor: Option<&str>,
         show_hidden: bool,
         name: Option<&str>,
+        prepare: Option<bool>,
     ) -> Message {
         let fail = |code: &str, detail: &str| Message::Error {
             code: code.into(),
@@ -80,8 +84,22 @@ impl DirectoryBrowser {
                 path.unwrap_or(""),
                 cursor.unwrap_or(""),
                 if show_hidden { "true" } else { "false" },
-                if name.is_some() { "create" } else { "browse" },
-                name.unwrap_or(""),
+                if prepare.is_some() {
+                    "prepare"
+                } else if name.is_some() {
+                    "create"
+                } else {
+                    "browse"
+                },
+                if let Some(create) = prepare {
+                    if create {
+                        "true"
+                    } else {
+                        "false"
+                    }
+                } else {
+                    name.unwrap_or("")
+                },
             ])
             .stdin(Stdio::null())
             .stdout(Stdio::piped())
@@ -115,7 +133,7 @@ impl DirectoryBrowser {
                 let _ = child.start_kill();
                 fail(
                     "DIRECTORY_TIMEOUT",
-                    if name.is_some() {
+                    if name.is_some() || prepare == Some(true) {
                         "Folder creation timed out and is unconfirmed. Close and refresh the directory before retrying."
                     } else {
                         "Reading timed out. The directory may be unavailable or awaiting device permission. Choose another directory."
@@ -124,7 +142,7 @@ impl DirectoryBrowser {
             }
             Ok(Err(_)) => fail(
                 "DIRECTORY_UNAVAILABLE",
-                if name.is_some() {
+                if name.is_some() || prepare == Some(true) {
                     "Creation is unconfirmed. Close and refresh the directory before retrying."
                 } else {
                     "Unable to read this directory. Retry or choose another directory."
@@ -132,7 +150,15 @@ impl DirectoryBrowser {
             ),
             Ok(Ok(())) => match serde_json::from_slice(&bytes) {
                 Ok(message @ Message::Error { .. }) => message,
-                Ok(message @ Message::DirectoryList { .. }) if name.is_none() => message,
+                Ok(
+                    message @ (Message::WorkingDirectoryReady { .. }
+                    | Message::WorkingDirectoryMissing { .. }),
+                ) if prepare.is_some() => message,
+                Ok(message @ Message::DirectoryList { .. })
+                    if name.is_none() && prepare.is_none() =>
+                {
+                    message
+                }
                 Ok(message @ Message::DirectoryCreated { .. }) if name.is_some() => message,
                 _ => fail(
                     "DIRECTORY_UNAVAILABLE",
@@ -140,5 +166,49 @@ impl DirectoryBrowser {
                 ),
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn missing_directory_requires_confirmation_and_creation_is_recursive() {
+        let root = std::env::temp_dir().join(format!("pirc-workdir-{}", uuid::Uuid::new_v4()));
+        let target = root.join("one/two/project");
+        let browser = DirectoryBrowser::new();
+        let path = target.to_string_lossy();
+        assert_eq!(
+            browser.prepare(&path, false).await,
+            Message::WorkingDirectoryMissing {
+                path: path.to_string()
+            }
+        );
+        assert!(!root.exists());
+        assert_eq!(
+            browser.prepare(&path, true).await,
+            Message::WorkingDirectoryReady {
+                path: path.to_string()
+            }
+        );
+        assert!(target.is_dir());
+        std::fs::write(target.join("keep.txt"), "keep").unwrap();
+        assert!(matches!(
+            browser.prepare(&path, true).await,
+            Message::WorkingDirectoryReady { .. }
+        ));
+        assert_eq!(
+            std::fs::read_to_string(target.join("keep.txt")).unwrap(),
+            "keep"
+        );
+        let file = root.join("file");
+        std::fs::write(&file, "do not overwrite").unwrap();
+        assert!(matches!(
+            browser.prepare(&file.to_string_lossy(), true).await,
+            Message::Error { .. }
+        ));
+        assert_eq!(std::fs::read_to_string(file).unwrap(), "do not overwrite");
+        std::fs::remove_dir_all(root).unwrap();
     }
 }

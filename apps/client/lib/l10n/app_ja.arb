@@ -355,5 +355,9 @@
   "commandCacheFull": "コマンドのキャッシュがいっぱいです",
   "commandForwarded": "コマンドを転送しました。完了は未確認です",
   "pairingConnectionFailed": "デバイスに接続できません",
-  "pairingConnectionTimedOut": "ペアリング接続がタイムアウトしました。サーバーが起動していることを確認して再試行してください。"
+  "pairingConnectionTimedOut": "ペアリング接続がタイムアウトしました。サーバーが起動していることを確認して再試行してください。",
+  "createWorkingDirectoryQuestion": "作業ディレクトリを作成しますか？",
+  "createWorkingDirectoryDescription": "このディレクトリは存在しません。必要な親ディレクトリも作成して続行しますか？",
+  "createAndContinue": "作成して続行",
+  "workingDirectoryNotDirectory": "作業ディレクトリのパスがフォルダーを指していません。"
 }

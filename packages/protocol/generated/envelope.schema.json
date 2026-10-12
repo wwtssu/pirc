@@ -590,6 +590,44 @@
         {
           "additionalProperties": false,
           "properties": {
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "working_directory_missing",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "type": {
+              "const": "working_directory_ready",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "create_cwd": {
+              "default": false,
+              "type": "boolean"
+            },
             "cwd": {
               "type": "string"
             },

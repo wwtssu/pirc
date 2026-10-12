@@ -297,11 +297,19 @@ pub enum Message {
         entries: Vec<DirectoryEntry>,
         next_cursor: Option<String>,
     },
+    WorkingDirectoryMissing {
+        path: String,
+    },
+    WorkingDirectoryReady {
+        path: String,
+    },
     LaunchSession {
         generation_id: String,
         cwd: String,
         session_id: Option<String>,
         name: Option<String>,
+        #[serde(default)]
+        create_cwd: bool,
     },
     SessionLaunched {
         launch_id: String,
