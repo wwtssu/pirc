@@ -618,16 +618,25 @@ impl Projection {
         outgoing
     }
     pub fn command(&mut self, instance: &str, text: Option<String>) -> Result<Envelope, String> {
-        self.session_action(instance, text, false)
+        self.session_action(instance, text, false, vec![])
     }
     pub fn close_session(&mut self, instance: &str) -> Result<Envelope, String> {
-        self.session_action(instance, None, true)
+        self.session_action(instance, None, true, vec![])
+    }
+    pub fn image_prompt(
+        &mut self,
+        instance: &str,
+        text: String,
+        images: Vec<InlineImage>,
+    ) -> Result<Envelope, String> {
+        self.session_action(instance, Some(text), false, images)
     }
     fn session_action(
         &mut self,
         instance: &str,
         text: Option<String>,
         closing: bool,
+        images: Vec<InlineImage>,
     ) -> Result<Envelope, String> {
         if self.view.connection != "connected" {
             return Err("Connection has not recovered. Controls are unavailable.".into());
@@ -676,8 +685,14 @@ impl Projection {
             if s.snapshot.state != SessionState::Idle {
                 return Err("Wait for confirmed idle state before sending".into());
             }
-            if text.trim().is_empty() || text.len() > 64 * 1024 {
+            if (text.trim().is_empty() && images.is_empty()) || text.len() > 64 * 1024 {
                 return Err("Enter a message of at most 64 KiB".into());
+            }
+            if images.len() > 4 || images.iter().map(|i| i.data.len()).sum::<usize>() > 600 * 1024 {
+                return Err("Image attachments are too large".into());
+            }
+            if !images.is_empty() && text.trim_start().starts_with('/') {
+                return Err("Images cannot be sent with a command".into());
             }
             let slash = text.trim().strip_prefix('/').map(|value| {
                 let mut parts = value.splitn(2, char::is_whitespace);
@@ -706,6 +721,7 @@ impl Projection {
                 }
             } else {
                 Message::Prompt {
+                    images,
                     generation_id: generation.clone(),
                     session_id: s.snapshot.session_id.clone(),
                     instance_id: instance.into(),
@@ -1037,7 +1053,7 @@ impl SessionView {
 mod tests {
     use super::*;
     #[test]
-    fn image_only_blocks_survive_completion() {
+    fn image_only_blocks_survive_completion_and_image_only_prompts_are_valid() {
         let mut session = SessionView::new(snapshot("i"));
         let image = ImageRef {
             id: "a".repeat(64),
@@ -1078,6 +1094,22 @@ mod tests {
         );
         assert_eq!(session.items.len(), 1);
         assert_eq!(session.items[0].images, vec![image]);
+        let mut p = Projection::default();
+        let replay = start(&mut p, "i");
+        end(&mut p, &replay, "i", 0);
+        let prompt = p
+            .image_prompt(
+                "i",
+                "".into(),
+                vec![InlineImage {
+                    data: "AAAA".into(),
+                    mime_type: "image/png".into(),
+                }],
+            )
+            .unwrap();
+        assert!(
+            matches!(prompt.message, Message::Prompt { images, text, .. } if images.len() == 1 && text.is_empty())
+        );
     }
     #[test]
     fn exit_is_explicit_managed_idle_and_cannot_be_repeated_or_resent() {

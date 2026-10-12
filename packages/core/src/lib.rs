@@ -40,6 +40,7 @@ pub fn encode_prompt(
         version: PROTOCOL_VERSION,
         request_id,
         message: Message::Prompt {
+            images: vec![],
             generation_id,
             expected_revision,
             session_id,

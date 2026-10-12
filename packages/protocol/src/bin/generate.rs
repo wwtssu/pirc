@@ -50,6 +50,7 @@ fn main() {
         (
             "prompt",
             Message::Prompt {
+                images: vec![],
                 generation_id: "generation-1".into(),
                 session_id: "session-1".into(),
                 instance_id: "instance-1".into(),

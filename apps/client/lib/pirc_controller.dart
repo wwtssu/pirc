@@ -6,6 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'src/rust/api/client.dart' as bridge;
 import 'connection_store.dart';
+import 'image_attachment.dart';
+import 'file_attachment.dart';
+
+String encodeImage(Uint8List bytes) => base64Encode(bytes);
 
 Uint8List decodeImage(String encoded) => base64Decode(encoded);
 
@@ -354,6 +358,100 @@ class PircController extends ChangeNotifier {
     }
   }
 
+  final _draftFiles = <String, PendingFileAttachment>{};
+  PendingFileAttachment? draftFile(SessionView s) => _draftFiles[_key(s)];
+  void stageFile(
+    SessionView s,
+    String name,
+    int total,
+    Stream<Uint8List> Function() openRead,
+  ) {
+    if (total > 20 * 1024 * 1024) throw StateError('File is too large');
+    _draftFiles[_key(s)] = PendingFileAttachment(
+      name: name,
+      total: total,
+      openRead: openRead,
+    );
+    notifyListeners();
+  }
+
+  void removeFile(SessionView s) {
+    _draftFiles.remove(_key(s));
+    notifyListeners();
+  }
+
+  String promptWithAttachments(SessionView s) {
+    final file = draftFile(s);
+    return file?.path == null
+        ? draft(s)
+        : '${draft(s)}\n\nAttached file: ${jsonEncode(file!.path)}'.trim();
+  }
+
+  Future<void> uploadFile(SessionView s, PendingFileAttachment file) async {
+    final name = file.name;
+    final total = file.total;
+    final chunks = attachmentChunks(file.openRead());
+    final uploadId = newUploadId();
+    final client = _client;
+    final epoch = _epoch;
+    if (client == null || connection != 'connected') {
+      throw StateError('Device disconnected');
+    }
+    if (total > 20 * 1024 * 1024) throw StateError('File is too large');
+    var offset = 0;
+    String? path;
+    await for (final bytes in chunks) {
+      if (_client != client || epoch != _epoch || connection != 'connected') {
+        throw StateError('Device disconnected');
+      }
+      final reply = decodeView(
+        await bridge.uploadFileChunk(
+          client: client,
+          instanceId: s.instance,
+          uploadId: uploadId,
+          name: name,
+          offset: offset,
+          total: total,
+          data: base64Encode(bytes),
+        ),
+      );
+      offset += bytes.length;
+      if (reply['type'] != 'file_chunk_stored' || reply['offset'] != offset) {
+        throw StateError('Invalid upload response');
+      }
+      path = reply['path'] as String?;
+    }
+    if (offset != total || path == null) {
+      throw StateError('File upload incomplete');
+    }
+    if (_client != client || epoch != _epoch || connection != 'connected') {
+      throw StateError('Device disconnected');
+    }
+    file.path = path;
+    notifyListeners();
+  }
+
+  final _draftImageNames = <String, String>{};
+  String? draftImageName(SessionView s) => _draftImageNames[_key(s)];
+  final _draftImages = <String, Uint8List>{};
+  Uint8List? draftImage(SessionView s) => _draftImages[_key(s)];
+  Future<void> attachImage(
+    SessionView s,
+    Uint8List bytes, {
+    String? name,
+  }) async {
+    final key = _key(s);
+    _draftImages[key] = await compute(prepareImageAttachment, bytes);
+    if (name != null) _draftImageNames[key] = name;
+    notifyListeners();
+  }
+
+  void removeImage(SessionView s) {
+    _draftImages.remove(_key(s));
+    _draftImageNames.remove(_key(s));
+    notifyListeners();
+  }
+
   String _key(SessionView s) => 'draft:$computerId:${s.session}';
   String draft(SessionView s) =>
       _drafts.putIfAbsent(_key(s), () => preferences?.getString(_key(s)) ?? '');
@@ -475,7 +573,11 @@ class PircController extends ChangeNotifier {
     await _waitForCommand(id);
   }
 
-  bool canSend(SessionView s) => canConfigure(s) && draft(s).trim().isNotEmpty;
+  bool canSend(SessionView s) =>
+      canConfigure(s) &&
+      (draft(s).trim().isNotEmpty ||
+          draftImage(s) != null ||
+          draftFile(s) != null);
   bool canConfigure(SessionView s) =>
       connection == 'connected' &&
       s.ready &&
@@ -562,8 +664,11 @@ class PircController extends ChangeNotifier {
         final session = sessions
             .where((s) => s.instance == c['instance_id'])
             .firstOrNull;
-        if (session != null && draft(session) == c['text']) {
+        if (session != null && promptWithAttachments(session) == c['text']) {
           _drafts[_key(session)] = '';
+          _draftImages.remove(_key(session));
+          _draftImageNames.remove(_key(session));
+          _draftFiles.remove(_key(session));
           _dirty.add(_key(session));
           unawaited(flushDrafts());
         }
@@ -588,11 +693,24 @@ class PircController extends ChangeNotifier {
     final client = _client;
     if (s == null || client == null || !canSend(s)) return;
     try {
-      await bridge.sendPrompt(
-        client: client,
-        instanceId: s.instance,
-        text: draft(s),
-      );
+      final file = draftFile(s);
+      if (file != null && file.path == null) await uploadFile(s, file);
+      if (_client != client || !canSend(s)) return;
+      final attachment = draftImage(s);
+      if (attachment == null) {
+        await bridge.sendPrompt(
+          client: client,
+          instanceId: s.instance,
+          text: promptWithAttachments(s),
+        );
+      } else {
+        await bridge.sendImagePrompt(
+          client: client,
+          instanceId: s.instance,
+          text: promptWithAttachments(s),
+          data: await compute(encodeImage, attachment),
+        );
+      }
     } catch (failure) {
       error = '$failure';
       notifyListeners();

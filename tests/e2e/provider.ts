@@ -121,6 +121,12 @@ function stream(
         });
         output.stopReason = "toolUse";
       } else if (prompt === "IMAGE") {
+        if (
+          last?.role !== "user" ||
+          !Array.isArray(last.content) ||
+          !last.content.some((c) => c.type === "image")
+        )
+          throw new Error("Image attachment did not reach the provider");
         const call = {
           type: "toolCall" as const,
           id: randomUUID(),
@@ -203,7 +209,7 @@ export default function (pi: ExtensionAPI) {
         id: "controlled",
         name: "pirc controlled test",
         reasoning: false,
-        input: ["text"],
+        input: ["text", "image"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 1000000,
         maxTokens: 1000,
@@ -212,7 +218,7 @@ export default function (pi: ExtensionAPI) {
         id: "controlled-reasoning",
         name: "pirc reasoning test",
         reasoning: true,
-        input: ["text"],
+        input: ["text", "image"],
         cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
         contextWindow: 1000000,
         maxTokens: 1000,

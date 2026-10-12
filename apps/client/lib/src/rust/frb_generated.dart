@@ -70,7 +70,7 @@ class RustLib extends BaseEntrypoint<RustLibApi, RustLibApiImpl, RustLibWire> {
   String get codegenVersion => '2.12.0';
 
   @override
-  int get rustContentHash => -132096991;
+  int get rustContentHash => 235081552;
 
   static const kDefaultExternalLibraryLoaderConfig =
       ExternalLibraryLoaderConfig(
@@ -164,6 +164,13 @@ abstract class RustLibApi extends BaseApi {
     required String instanceId,
   });
 
+  Future<String> crateApiClientSendImagePrompt({
+    required PircClient client,
+    required String instanceId,
+    required String text,
+    required String data,
+  });
+
   Future<String> crateApiClientSendPrompt({
     required PircClient client,
     required String instanceId,
@@ -178,6 +185,16 @@ abstract class RustLibApi extends BaseApi {
   Future<String> crateApiClientStopSession({
     required PircClient client,
     required String instanceId,
+  });
+
+  Future<String> crateApiClientUploadFileChunk({
+    required PircClient client,
+    required String instanceId,
+    required String uploadId,
+    required String name,
+    required int offset,
+    required int total,
+    required String data,
   });
 
   Stream<String> crateApiClientWatchClient({required PircClient client});
@@ -827,6 +844,48 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
       );
 
   @override
+  Future<String> crateApiClientSendImagePrompt({
+    required PircClient client,
+    required String instanceId,
+    required String text,
+    required String data,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPircClient(
+            client,
+            serializer,
+          );
+          sse_encode_String(instanceId, serializer);
+          sse_encode_String(text, serializer);
+          sse_encode_String(data, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 18,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiClientSendImagePromptConstMeta,
+        argValues: [client, instanceId, text, data],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiClientSendImagePromptConstMeta =>
+      const TaskConstMeta(
+        debugName: "send_image_prompt",
+        argNames: ["client", "instanceId", "text", "data"],
+      );
+
+  @override
   Future<String> crateApiClientSendPrompt({
     required PircClient client,
     required String instanceId,
@@ -845,7 +904,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 18,
+            funcId: 19,
             port: port_,
           );
         },
@@ -882,7 +941,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 19,
+            funcId: 20,
             port: port_,
           );
         },
@@ -920,7 +979,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
           pdeCallFfi(
             generalizedFrbRustBinding,
             serializer,
-            funcId: 20,
+            funcId: 21,
             port: port_,
           );
         },
@@ -941,6 +1000,62 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
   );
 
   @override
+  Future<String> crateApiClientUploadFileChunk({
+    required PircClient client,
+    required String instanceId,
+    required String uploadId,
+    required String name,
+    required int offset,
+    required int total,
+    required String data,
+  }) {
+    return handler.executeNormal(
+      NormalTask(
+        callFfi: (port_) {
+          final serializer = SseSerializer(generalizedFrbRustBinding);
+          sse_encode_Auto_Ref_RustOpaque_flutter_rust_bridgefor_generatedRustAutoOpaqueInnerPircClient(
+            client,
+            serializer,
+          );
+          sse_encode_String(instanceId, serializer);
+          sse_encode_String(uploadId, serializer);
+          sse_encode_String(name, serializer);
+          sse_encode_u_32(offset, serializer);
+          sse_encode_u_32(total, serializer);
+          sse_encode_String(data, serializer);
+          pdeCallFfi(
+            generalizedFrbRustBinding,
+            serializer,
+            funcId: 22,
+            port: port_,
+          );
+        },
+        codec: SseCodec(
+          decodeSuccessData: sse_decode_String,
+          decodeErrorData: sse_decode_String,
+        ),
+        constMeta: kCrateApiClientUploadFileChunkConstMeta,
+        argValues: [client, instanceId, uploadId, name, offset, total, data],
+        apiImpl: this,
+      ),
+    );
+  }
+
+  TaskConstMeta get kCrateApiClientUploadFileChunkConstMeta =>
+      const TaskConstMeta(
+        debugName: "upload_file_chunk",
+        argNames: [
+          "client",
+          "instanceId",
+          "uploadId",
+          "name",
+          "offset",
+          "total",
+          "data",
+        ],
+      );
+
+  @override
   Stream<String> crateApiClientWatchClient({required PircClient client}) {
     final sink = RustStreamSink<String>();
     unawaited(
@@ -956,7 +1071,7 @@ class RustLibApiImpl extends RustLibApiImplPlatform implements RustLibApi {
             pdeCallFfi(
               generalizedFrbRustBinding,
               serializer,
-              funcId: 21,
+              funcId: 23,
               port: port_,
             );
           },

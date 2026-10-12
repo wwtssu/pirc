@@ -365,8 +365,34 @@ export default function pirc(pi: ExtensionAPI) {
         });
       return;
     }
-    if (!m.text.trim() || Buffer.byteLength(m.text) > 64 * 1024) {
+    if (
+      (!m.text.trim() && !m.images?.length) ||
+      Buffer.byteLength(m.text) > 64 * 1024
+    ) {
       result(e.request_id, "rejected", "INVALID_PROMPT");
+      return;
+    }
+    const attachments = (m.images ?? []).map((image) => ({
+      type: "image" as const,
+      data: image.data,
+      mimeType: image.mime_type,
+    }));
+    if (
+      attachments.length > 4 ||
+      attachments.reduce((n, image) => n + image.data.length, 0) > 600 * 1024 ||
+      images.collect(attachments).length !== attachments.length ||
+      (attachments.length && m.text.trimStart().startsWith("/"))
+    ) {
+      result(e.request_id, "rejected", "INVALID_ARGUMENT");
+      return;
+    }
+    if (attachments.length && ctx.model && !ctx.model.input.includes("image")) {
+      result(
+        e.request_id,
+        "rejected",
+        "MODEL_NO_IMAGES",
+        "The selected model does not support images",
+      );
       return;
     }
     if (!ctx.model) {
@@ -385,9 +411,14 @@ export default function pirc(pi: ExtensionAPI) {
     settled = false;
     state("running");
     try {
-      pi.sendUserMessage(m.text, {
-        expandPromptTemplates: m.text.trimStart().startsWith("/"),
-      });
+      pi.sendUserMessage(
+        attachments.length
+          ? [{ type: "text", text: m.text }, ...attachments]
+          : m.text,
+        {
+          expandPromptTemplates: m.text.trimStart().startsWith("/"),
+        },
+      );
     } catch (err) {
       pendingPrompt = undefined;
       settled = true;
@@ -527,7 +558,7 @@ export default function pirc(pi: ExtensionAPI) {
     syncingHistory = true;
     localCompacting = false;
     session = {
-      capabilities: ["image_read", "local_ui_state"],
+      capabilities: ["image_read", "image_prompt", "local_ui_state"],
       session_id: context.sessionManager.getSessionId(),
       instance_id: instanceId,
       cwd: context.cwd,

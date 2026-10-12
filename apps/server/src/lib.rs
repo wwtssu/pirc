@@ -16,6 +16,7 @@ use std::{
 use tokio::sync::{broadcast, mpsc, Mutex};
 use uuid::Uuid;
 mod approval;
+mod attachments;
 mod directories;
 mod identity;
 mod launcher;
@@ -258,7 +259,7 @@ async fn connection(app: App, ws: WebSocket, is_extension: bool, encrypted: bool
                         Ok(e) => {
                             // Filesystem/consent waits must not block event delivery,
                             // controller commands or WebSocket ping/pong processing.
-                            if !is_extension && matches!(&e.message, Message::BrowseDirectories { .. } | Message::CreateDirectory { .. } | Message::SavedSessions {}) {
+                            if !is_extension && matches!(&e.message, Message::BrowseDirectories { .. } | Message::CreateDirectory { .. } | Message::SavedSessions {} | Message::UploadFileChunk { .. }) {
                                 if reads.len() >= 8 {
                                     if !send(&mut ws, error(&e.request_id, "READ_BUSY", "Device is reading data. Try again later.")).await { break; }
                                 } else {
@@ -697,6 +698,40 @@ fn history_page(
     })
 }
 async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
+    if let Message::UploadFileChunk {
+        generation_id,
+        session_id,
+        instance_id,
+        ..
+    } = &e.message
+    {
+        let valid = generation_id == &app.generation
+            && app
+                .inner
+                .lock()
+                .await
+                .sessions
+                .get(instance_id)
+                .is_some_and(|s| {
+                    s.snapshot.session_id == *session_id
+                        && s.snapshot.state != SessionState::Offline
+                        && s.seen.elapsed() < Duration::from_secs(15)
+                });
+        if !valid {
+            return vec![error(
+                &e.request_id,
+                "STALE_INSTANCE",
+                "Session is no longer available",
+            )];
+        }
+        let message = e.message.clone();
+        let result = tokio::task::spawn_blocking(move || attachments::store(&message)).await;
+        return vec![match result {
+            Ok(Ok(message)) => Envelope::new(e.request_id, message),
+            Ok(Err(detail)) => error(&e.request_id, "FILE_UPLOAD_FAILED", &detail),
+            Err(_) => error(&e.request_id, "FILE_UPLOAD_FAILED", "Unable to upload file"),
+        }];
+    }
     if let Message::CreateDirectory { parent, name } = &e.message {
         let message = app.launcher.directories.create(parent, name).await;
         return vec![Envelope::new(e.request_id, message)];
@@ -973,7 +1008,18 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
                     return vec![reject(&e.request_id, session_id, instance_id, code)];
                 }
             }
-            if let Message::Prompt { text, .. } = &e.message {
+            if let Message::Prompt { text, images, .. } = &e.message {
+                if images.len() > 4
+                    || images.iter().map(|i| i.data.len()).sum::<usize>() > 600 * 1024
+                    || (!images.is_empty() && text.trim_start().starts_with('/'))
+                {
+                    return vec![reject(
+                        &e.request_id,
+                        session_id,
+                        instance_id,
+                        "INVALID_ARGUMENT",
+                    )];
+                }
                 if let Some(name) = text
                     .trim_start()
                     .strip_prefix('/')
@@ -1151,6 +1197,45 @@ pub async fn run_with_port(port: Option<u16>) {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn file_upload_requires_current_generation_and_online_session() {
+        let app = app();
+        let (tx, _) = mpsc::channel(8);
+        from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Register { session: session() }),
+        )
+        .await;
+        for (generation, session_id, instance) in [
+            ("old", "s", "i"),
+            ("g", "other", "i"),
+            ("g", "s", "missing"),
+        ] {
+            let replies = from_control(
+                &app,
+                Envelope::new(
+                    "upload",
+                    Message::UploadFileChunk {
+                        generation_id: generation.into(),
+                        session_id: session_id.into(),
+                        instance_id: instance.into(),
+                        upload_id: Uuid::new_v4().to_string(),
+                        name: "note.txt".into(),
+                        offset: 0,
+                        total: 1,
+                        data: "YQ==".into(),
+                    },
+                ),
+            )
+            .await;
+            assert!(
+                matches!(&replies[0].message, Message::Error { code, .. } if code == "STALE_INSTANCE")
+            );
+        }
+    }
+
     #[tokio::test]
     async fn image_reads_are_scoped_available_while_running_and_not_cached() {
         let app = app();

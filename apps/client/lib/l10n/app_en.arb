@@ -470,5 +470,14 @@
   "createAndContinue": "Create and continue",
   "workingDirectoryNotDirectory": "Working directory path is not a directory.",
   "imageUnavailable": "Image unavailable",
-  "viewImage": "View image"
+  "viewImage": "View image",
+  "attachAttachment": "Add attachment",
+  "removeImage": "Remove image",
+  "imageSelectionFailed": "Unable to attach image. Choose a supported image under 20 MB.",
+  "modelNoImages": "The selected model does not support images",
+  "attachmentImage": "Image",
+  "attachmentFile": "File",
+  "removeAttachment": "Remove attachment",
+  "fileSelectionFailed": "Unable to select or upload the file",
+  "fileTooLarge": "Files must be 20 MB or smaller"
 }

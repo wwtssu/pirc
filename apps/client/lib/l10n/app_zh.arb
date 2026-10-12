@@ -361,5 +361,14 @@
   "createAndContinue": "创建并继续",
   "workingDirectoryNotDirectory": "工作目录路径指向的不是文件夹。",
   "imageUnavailable": "图片无法加载",
-  "viewImage": "查看图片"
+  "viewImage": "查看图片",
+  "attachAttachment": "添加附件",
+  "removeImage": "移除图片",
+  "imageSelectionFailed": "无法添加图片，请选择小于 20 MB 的受支持图片。",
+  "modelNoImages": "所选模型不支持图片",
+  "attachmentImage": "图片",
+  "attachmentFile": "文件",
+  "removeAttachment": "移除附件",
+  "fileSelectionFailed": "无法选择或上传文件",
+  "fileTooLarge": "文件不能超过 20 MB"
 }

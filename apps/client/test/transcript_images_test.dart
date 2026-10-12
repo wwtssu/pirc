@@ -3,6 +3,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:image/image.dart' as image;
+import 'package:pirc/image_attachment.dart';
 import 'package:pirc/pirc_controller.dart';
 import 'package:pirc/pirc_localizations.dart';
 import 'package:pirc/pirc_screen.dart';
@@ -26,6 +28,17 @@ class ImagesController extends PircController {
 }
 
 void main() {
+  test('photo preparation bounds dimensions and rejects invalid input', () {
+    final source = image.Image(width: 2000, height: 1000);
+    final encoded = prepareImageAttachment(image.encodePng(source));
+    final decoded = image.decodeJpg(encoded)!;
+    expect(decoded.width, lessThanOrEqualTo(1600));
+    expect(encoded.length, lessThanOrEqualTo(440 * 1024));
+    expect(
+      () => prepareImageAttachment(Uint8List.fromList([1, 2])),
+      throwsStateError,
+    );
+  });
   testWidgets('tool images load once across updates and support preview', (
     tester,
   ) async {

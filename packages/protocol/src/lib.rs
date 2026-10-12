@@ -210,6 +210,13 @@ pub enum EventKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
+pub struct InlineImage {
+    pub data: String,
+    pub mime_type: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
 pub struct ImageRef {
     pub id: String,
     pub mime_type: String,
@@ -332,6 +339,20 @@ pub enum Message {
     WorkingDirectoryReady {
         path: String,
     },
+    UploadFileChunk {
+        generation_id: String,
+        session_id: String,
+        instance_id: String,
+        upload_id: String,
+        name: String,
+        offset: u32,
+        total: u32,
+        data: String,
+    },
+    FileChunkStored {
+        offset: u32,
+        path: Option<String>,
+    },
     ReadImage {
         generation_id: String,
         session_id: String,
@@ -411,6 +432,8 @@ pub enum Message {
         expected_revision: u64,
     },
     Prompt {
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        images: Vec<InlineImage>,
         generation_id: String,
         session_id: String,
         instance_id: String,
@@ -549,6 +572,7 @@ mod tests {
         let envelope = Envelope::new(
             "req-1",
             Message::Prompt {
+                images: vec![],
                 generation_id: "generation-1".into(),
                 session_id: "session-1".into(),
                 instance_id: "instance-2".into(),
@@ -574,6 +598,7 @@ mod tests {
         let e = Envelope::new(
             "r",
             Message::Prompt {
+                images: vec![],
                 generation_id: "g".into(),
                 session_id: "s".into(),
                 instance_id: "i".into(),

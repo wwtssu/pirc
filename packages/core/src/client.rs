@@ -1,6 +1,6 @@
 use crate::projection::{packet, Projection, View};
 use crate::transport::{canonical_service_address, connect_service, upgrade_request};
-use pirc_protocol::{Envelope, HistoryDirection, Message};
+use pirc_protocol::{Envelope, HistoryDirection, InlineImage, Message};
 use std::{
     sync::{Arc, Mutex, OnceLock},
     time::{Duration, Instant},
@@ -17,6 +17,7 @@ enum Action {
         instance: String,
         text: Option<String>,
         closing: bool,
+        images: Vec<InlineImage>,
         reply: oneshot::Sender<Result<String, String>>,
     },
     History {
@@ -89,6 +90,43 @@ impl Client {
             create_cwd,
         })
         .await
+    }
+    pub async fn upload_file_chunk(
+        &self,
+        instance_id: String,
+        upload_id: String,
+        name: String,
+        offset: u32,
+        total: u32,
+        data: String,
+    ) -> Result<Message, String> {
+        let view = self.view();
+        let generation_id = view
+            .generation
+            .ok_or("Device disconnected. Reconnect and try again.")?;
+        let session_id = view
+            .sessions
+            .iter()
+            .find(|s| s.snapshot.instance_id == instance_id)
+            .ok_or("Session not found")?
+            .snapshot
+            .session_id
+            .clone();
+        tokio::time::timeout(
+            Duration::from_secs(15),
+            self.request(Message::UploadFileChunk {
+                generation_id,
+                session_id,
+                instance_id,
+                upload_id,
+                name,
+                offset,
+                total,
+                data,
+            }),
+        )
+        .await
+        .map_err(|_| "File upload timed out".to_string())?
     }
     pub async fn read_image(
         &self,
@@ -244,6 +282,7 @@ impl Client {
                 instance,
                 text,
                 closing: false,
+                images: vec![],
                 reply,
             })
             .await
@@ -252,6 +291,25 @@ impl Client {
             .await
             .map_err(|_| String::from("Connection closed"))?
     }
+    pub async fn send_images(
+        &self,
+        instance: String,
+        text: String,
+        images: Vec<InlineImage>,
+    ) -> Result<String, String> {
+        let (reply, result) = oneshot::channel();
+        self.actions
+            .send(Action::Send {
+                instance,
+                text: Some(text),
+                images,
+                closing: false,
+                reply,
+            })
+            .await
+            .map_err(|_| "Connection closed")?;
+        result.await.map_err(|_| "Connection closed".to_string())?
+    }
     pub async fn close_session(&self, instance: String) -> Result<String, String> {
         let (reply, result) = oneshot::channel();
         self.actions
@@ -259,6 +317,7 @@ impl Client {
                 instance,
                 text: None,
                 closing: true,
+                images: vec![],
                 reply,
             })
             .await
@@ -490,8 +549,8 @@ async fn worker(
                                         Err(error) => { let _ = reply.send(Err(error)); }
                                     }
                                 },
-                                Some(Action::Send { instance, text, closing, reply }) => {
-                                    let e = if closing { state.lock().unwrap().close_session(&instance) } else { state.lock().unwrap().command(&instance, text) };
+                                Some(Action::Send { instance, text, closing, images, reply }) => {
+                                    let e = if closing { state.lock().unwrap().close_session(&instance) } else if images.is_empty() { state.lock().unwrap().command(&instance, text) } else { state.lock().unwrap().image_prompt(&instance, text.unwrap_or_default(), images) };
                                     match e {
                                         Ok(e) => {
                                             let id = e.request_id.clone();

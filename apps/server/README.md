@@ -50,3 +50,9 @@ tmux -L pirc attach-session -t <session-name>
 Press Ctrl+B, then D to detach from tmux. The agent continues running on the device when the client returns to the session list or loses its connection. Sessions created or restored by the server can be exited through session management; the adapter checks the execution state.
 
 Remote directory operations run in a separate Node process with a 5-second deadline. System permissions must be granted on the device. Creating a directory never overwrites an existing file or directory with the same name.
+
+For systemd deployments, set `KillMode=process` in the server unit to keep headless agent sessions running when the server is restarted.
+
+## File attachments
+
+Authorized clients can upload files of up to 20 MiB in bounded chunks. Uploads require a current server generation and an online session. Files are stored under `~/.pirc/attachments` with separate directories for each session instance and upload. Filenames cannot contain path separators; existing uploads are never overwritten.

@@ -302,6 +302,22 @@
       ],
       "type": "object"
     },
+    "InlineImage": {
+      "additionalProperties": false,
+      "properties": {
+        "data": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "mime_type"
+      ],
+      "type": "object"
+    },
     "Message": {
       "oneOf": [
         {
@@ -685,6 +701,80 @@
         {
           "additionalProperties": false,
           "properties": {
+            "data": {
+              "type": "string"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "name": {
+              "type": "string"
+            },
+            "offset": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "total": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "type": {
+              "const": "upload_file_chunk",
+              "type": "string"
+            },
+            "upload_id": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "upload_id",
+            "name",
+            "offset",
+            "total",
+            "data"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "offset": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "path": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "type": {
+              "const": "file_chunk_stored",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "offset"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "generation_id": {
               "type": "string"
             },
@@ -1060,6 +1150,12 @@
             },
             "generation_id": {
               "type": "string"
+            },
+            "images": {
+              "items": {
+                "$ref": "#/$defs/InlineImage"
+              },
+              "type": "array"
             },
             "instance_id": {
               "type": "string"

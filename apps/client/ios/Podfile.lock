@@ -1,6 +1,6 @@
 PODS:
   - Flutter (1.0.0)
-  - pirc_mobile_bridge (0.0.1):
+  - pirc_mobile_bridge (0.1.0):
     - Flutter
 
 DEPENDENCIES:
@@ -15,7 +15,7 @@ EXTERNAL SOURCES:
 
 SPEC CHECKSUMS:
   Flutter: 71a624a5bc0c04062bf19101d501e466baf2fb47
-  pirc_mobile_bridge: d6107e01c6d87b62ddc528155518bb4f87f6c327
+  pirc_mobile_bridge: 3a2bdd172c695c24574ce3b82f56ca8db8197df0
 
 PODFILE CHECKSUM: 3ba3a73b1b12adcf321a227a745625fe0888cc82
 

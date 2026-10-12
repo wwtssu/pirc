@@ -80,6 +80,10 @@ abstract final class PircLayout {
   static const emptyStateSize = 64.0;
   static const actionSize = 48.0;
   static const composerActionSize = 36.0;
+  static const attachmentMenuWidth = 204.0;
+  static const attachmentChoiceHeight = 50.0;
+  static const attachmentIconBox = 28.0;
+  static const attachmentPreviewSize = 36.0;
   static const settingMinSize = 48.0;
   static const statusDotSize = 6.0;
   static const statusBadgeWidthFactor = .45;
@@ -113,6 +117,7 @@ abstract final class PircMotion {
 }
 
 abstract final class PircEffects {
+  static const popupElevation = 2.0;
   // Pencil colors use RGBA; Flutter's integer color uses ARGB.
   static const dialogShadow = [
     BoxShadow(color: Color(0x330f172a), blurRadius: 48, offset: Offset(0, 18)),

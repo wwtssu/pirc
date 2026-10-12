@@ -1,4 +1,10 @@
 import 'transcript_images.dart';
+import 'attachment_button.dart';
+
+import 'package:image_picker/image_picker.dart';
+import 'package:file_selector/file_selector.dart';
+
+import 'draft_attachments.dart';
 
 import 'dart:async';
 
@@ -837,6 +843,73 @@ class _SessionPageState extends State<SessionPage> {
     super.dispose();
   }
 
+  bool pickingImage = false;
+  Future<void> chooseAttachment(String kind) async {
+    if (model.selected == null || pickingImage || actionInFlight) return;
+    if (kind == 'image') await pickImage();
+    if (kind == 'file') await pickFile();
+  }
+
+  Future<void> pickFile() async {
+    final session = model.selected;
+    if (session == null || pickingImage || actionInFlight) return;
+    setState(() => pickingImage = true);
+    try {
+      final file = await openFile();
+      if (file == null) return;
+      final total = await file.length();
+      if (total > 20 * 1024 * 1024) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(context.l10n.fileTooLarge)));
+        }
+        return;
+      }
+      if (!mounted || model.selected?.instance != session.instance) return;
+      model.stageFile(session, file.name, total, file.openRead);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.fileSelectionFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => pickingImage = false);
+    }
+  }
+
+  Future<void> pickImage() async {
+    final session = model.selected;
+    if (session == null || pickingImage || actionInFlight) return;
+    setState(() => pickingImage = true);
+    try {
+      final file = await ImagePicker().pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1600,
+        maxHeight: 1600,
+        imageQuality: 85,
+        requestFullMetadata: false,
+      );
+      if (file == null) return;
+      if (await file.length() > 20 * 1024 * 1024) {
+        throw StateError('Image is too large');
+      }
+      await model.attachImage(
+        session,
+        await file.readAsBytes(),
+        name: file.name,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.l10n.imageSelectionFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => pickingImage = false);
+    }
+  }
+
   bool actionInFlight = false;
   bool promptInFlight = false;
   bool commandSheetOpen = false;
@@ -1067,6 +1140,8 @@ class _SessionPageState extends State<SessionPage> {
     final canAct =
         connected &&
         !commandSheetOpen &&
+        !pickingImage &&
+        !actionInFlight &&
         !waiting &&
         (running ? model.canStop(s) : model.canSend(s));
     final canConfigure = !actionInFlight && model.canConfigure(s);
@@ -1351,6 +1426,19 @@ class _SessionPageState extends State<SessionPage> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
+                        DraftAttachments(
+                          fileName: model.draftFile(s)?.name,
+                          image: model.draftImage(s),
+                          imageName: model.draftImageName(s),
+                          onRemoveFile:
+                              actionInFlight || model.pending(s) || pickingImage
+                              ? null
+                              : () => model.removeFile(s),
+                          onRemoveImage:
+                              actionInFlight || model.pending(s) || pickingImage
+                              ? null
+                              : () => model.removeImage(s),
+                        ),
                         Focus(
                           onKeyEvent: handleEditorKey,
                           child: TextField(
@@ -1360,12 +1448,27 @@ class _SessionPageState extends State<SessionPage> {
                             controller: editor,
                             minLines: 1,
                             maxLines: 4,
+                            textAlignVertical: TextAlignVertical.center,
                             style: context.pircText.body,
                             onChanged: (text) {
                               lastDraft = text;
                               model.setDraft(s, text);
                             },
                             decoration: PircInputDecorations.composer.copyWith(
+                              prefixIcon: AttachmentButton(
+                                key: const Key('attach-attachment'),
+                                loading: pickingImage,
+                                images:
+                                    (s.snapshot['capabilities'] as List? ?? [])
+                                        .contains('image_prompt'),
+                                onSelected:
+                                    connected &&
+                                        !actionInFlight &&
+                                        !pickingImage &&
+                                        !model.pending(s)
+                                    ? chooseAttachment
+                                    : null,
+                              ),
                               hintText: context.l10n.messageHint,
                             ),
                           ),

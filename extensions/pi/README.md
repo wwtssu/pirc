@@ -36,3 +36,7 @@ Blocking extension UI prompts expose their kind and title through session state.
 ## Images
 
 User and tool-result images are preserved in the transcript. The client loads PNG, JPEG, WebP, and GIF content in bounded chunks over the encrypted connection; historical images are read from the active agent session. Images larger than 20 MiB are excluded. Downloads do not require the agent to be idle.
+
+## Image attachments
+
+The client can attach one image to a prompt. Image preparation runs off the UI thread, applies orientation, and scales/compresses the image before transmission. The selected model must accept image inputs. Attachments are retained after rejected or unconfirmed sends and cleared after the agent acknowledges the prompt.

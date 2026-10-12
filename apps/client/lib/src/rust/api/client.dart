@@ -66,6 +66,36 @@ Future<String> launchSession({
   createCwd: createCwd,
 );
 
+Future<String> sendImagePrompt({
+  required PircClient client,
+  required String instanceId,
+  required String text,
+  required String data,
+}) => RustLib.instance.api.crateApiClientSendImagePrompt(
+  client: client,
+  instanceId: instanceId,
+  text: text,
+  data: data,
+);
+
+Future<String> uploadFileChunk({
+  required PircClient client,
+  required String instanceId,
+  required String uploadId,
+  required String name,
+  required int offset,
+  required int total,
+  required String data,
+}) => RustLib.instance.api.crateApiClientUploadFileChunk(
+  client: client,
+  instanceId: instanceId,
+  uploadId: uploadId,
+  name: name,
+  offset: offset,
+  total: total,
+  data: data,
+);
+
 Future<String> readImage({
   required PircClient client,
   required String instanceId,

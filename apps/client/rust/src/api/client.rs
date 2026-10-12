@@ -76,6 +76,41 @@ pub async fn launch_session(
     )
     .map_err(|e| e.to_string())
 }
+pub async fn send_image_prompt(
+    client: &PircClient,
+    instance_id: String,
+    text: String,
+    data: String,
+) -> Result<String, String> {
+    client
+        .inner
+        .send_images(
+            instance_id,
+            text,
+            vec![pirc_protocol::InlineImage {
+                data,
+                mime_type: "image/jpeg".into(),
+            }],
+        )
+        .await
+}
+pub async fn upload_file_chunk(
+    client: &PircClient,
+    instance_id: String,
+    upload_id: String,
+    name: String,
+    offset: u32,
+    total: u32,
+    data: String,
+) -> Result<String, String> {
+    serde_json::to_string(
+        &client
+            .inner
+            .upload_file_chunk(instance_id, upload_id, name, offset, total, data)
+            .await?,
+    )
+    .map_err(|e| e.to_string())
+}
 pub async fn read_image(
     client: &PircClient,
     instance_id: String,

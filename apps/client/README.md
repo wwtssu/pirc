@@ -23,6 +23,12 @@ Connection addresses accept an IP, hostname, or service address. The client hand
 
 Each device supports a primary address and an ordered list of fallback addresses. Network failures trigger an attempt with the next address. Authentication, certificate, or device identity errors stop automatic fallback. The device list and current selection are persisted; encryption keys use the system secure store.
 
+## Attachments
+
+The attachment menu opens the photo picker for images and the system file picker for files. Selected attachments remain in the local draft and can be removed while composing. Upload and prompt submission begin only when Send is pressed. The current composer supports one image and one file, with a 20 MiB input limit per attachment.
+
+Images are resized and compressed off the UI thread and sent as model image inputs. Files are uploaded in bounded chunks to the device, and their paths are included in the prompt. Rejected or unconfirmed prompts retain their attachments.
+
 ## Debug key storage
 
 `PIRC_SECRET_STORE` is a compile-time setting accepting `file` or `keychain`. Debug builds default to file storage; Release and Profile builds default to the system secure store. To build a Release version for debugging with file storage:

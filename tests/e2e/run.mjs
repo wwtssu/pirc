@@ -762,11 +762,44 @@ try {
   );
   await controller.state(s.instance_id, "idle");
 
+  const upload = randomUUID();
+  const fileSession = active(s.instance_id);
+  const fileBytes = Buffer.from("Uploaded attachment\n".repeat(4000));
+  let filePath;
+  for (let offset = 0; offset < fileBytes.length; offset += 48 * 1024) {
+    const bytes = fileBytes.subarray(offset, offset + 48 * 1024);
+    const id = controller.send({ type: "upload_file_chunk", ...base(fileSession),
+      upload_id: upload, name: "attachment.txt", offset, total: fileBytes.length, data: bytes.toString("base64") });
+    const reply = await controller.wait(() => controller.frame(e => e.request_id === id && e.message.type === "file_chunk_stored"), "file chunk stored");
+    assert.equal(reply.message.offset, offset + bytes.length);
+    filePath = reply.message.path;
+  }
+  assert.deepEqual(readFileSync(filePath), fileBytes);
+  assert(filePath.startsWith(join(run, ".pirc", "attachments")));
+  const invalidFile = controller.send({ type: "upload_file_chunk", ...base(fileSession),
+    upload_id: randomUUID(), name: "../escape.txt", offset: 0, total: 1, data: "YQ==" });
+  await controller.wait(() => controller.frame(e => e.request_id === invalidFile && e.message.type === "error"), "invalid file rejected");
+  const filePromptMark = controller.messages.length;
+  const attachedPrompt = `FILE ATTACHMENT\n\nAttached file: ${JSON.stringify(filePath)}`;
+  const filePromptSession = active(s.instance_id);
+  const filePromptId = controller.send({ type: "prompt", ...base(filePromptSession), expected_revision: filePromptSession.revision, text: attachedPrompt });
+  await controller.result(filePromptId, "accepted");
+  await controller.wait(() => controller.frame(e => e.message.type === "event" && e.message.event.kind === "user_message" && e.message.event.text === attachedPrompt, filePromptMark), "uploaded file path delivered to Pi");
+  await controller.state(s.instance_id, "idle");
+  note("file attachments upload in bounded chunks and reject path traversal");
+
   const imageMark = controller.messages.length;
   const imageData =
     "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGP4XzDhPzJmIF0AAFteL+Hl/kTRAAAAAElFTkSuQmCC";
   const imageSession = active(s.instance_id);
-  await prompt(imageSession, "IMAGE");
+  const imagePrompt = controller.send({
+    type: "prompt",
+    ...base(imageSession),
+    expected_revision: imageSession.revision,
+    text: "IMAGE",
+    images: [{ mime_type: "image/png", data: imageData }],
+  });
+  await controller.result(imagePrompt, "accepted");
   await controller.wait(
     () =>
       controller.frame(
@@ -807,7 +840,7 @@ try {
     ),
   );
   note(
-    "tool images survive history with scoped chunk reads",
+    "image prompt reaches the provider and tool images survive history with scoped chunk reads",
   );
   input(first.pane, "/test-dialog");
   await controller.wait(
