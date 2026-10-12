@@ -22,17 +22,21 @@ Agents run on the device. An adapter registers sessions with the server and forw
 
 ## Starting the server
 
-Requires Rust, Node.js, npm, and Pi. Headless Linux devices also require tmux.
+Requires Git, Rust, Node.js, npm, and Pi. Headless Linux devices also require tmux.
 
-Install dependencies and build the CLI from the repository root:
+For a fresh checkout, copy and run the entire block:
 
 ```sh
-npm ci
-cargo build --release -p pirc-server
-./target/release/pirc server
+git clone https://github.com/wwtssu/pirc.git &&
+cd pirc &&
+npm ci &&
+cargo install --locked --path apps/server --bin pirc &&
+pirc server
 ```
 
 The server runs in the foreground and listens on `0.0.0.0:43123` by default. Use `pirc server --port <port>` to change the port, or `pirc --help` to list commands.
+
+After the initial installation, run `pirc server` directly. Keep the checkout: the server loads its adapter and helper scripts from it.
 
 To start an agent manually, set the adapter path from the repository root, then switch to the working directory:
 
