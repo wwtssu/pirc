@@ -17,4 +17,5 @@ work/
 design.pen
 /.runtime/
 /apps/client/preview/
+/apps/client/android/.kotlin/
 /.fvmrc
