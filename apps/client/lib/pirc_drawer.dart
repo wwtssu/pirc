@@ -98,38 +98,53 @@ class PircDrawer extends StatelessWidget {
             if (PircLanguage.maybeOf(context) case final language?) ...[
               const SizedBox(height: PircSpacing.s24),
               ListTile(
+                key: const Key('app-language'),
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: PircSpacing.s12,
                 ),
-                leading: const Icon(LucideIcons.languages),
-                title: Text(context.l10n.language),
-                subtitle: DropdownButton<String>(
-                  key: const Key('app-language'),
-                  value: language.value,
-                  isExpanded: true,
-                  underline: const SizedBox.shrink(),
-                  items: [
-                    DropdownMenuItem(
-                      value: 'system',
-                      child: Text(context.l10n.systemLanguage),
+                shape: const RoundedRectangleBorder(
+                  borderRadius: PircRadii.button,
+                ),
+                leading: Icon(
+                  LucideIcons.languages,
+                  size: PircIconSizes.toolbar,
+                  color: context.pircColors.onSurfaceVariant,
+                ),
+                title: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        context.l10n.language,
+                        style: context.pircText.body,
+                      ),
                     ),
-                    DropdownMenuItem(
-                      value: 'en',
-                      child: Text(context.l10n.englishLanguage),
-                    ),
-                    DropdownMenuItem(
-                      value: 'zh',
-                      child: Text(context.l10n.chineseLanguage),
-                    ),
-                    DropdownMenuItem(
-                      value: 'ja',
-                      child: Text(context.l10n.japaneseLanguage),
+                    const SizedBox(width: PircSpacing.s8),
+                    Flexible(
+                      child: Text(
+                        _languageLabels(context)[language.value] ??
+                            context.l10n.systemLanguage,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.pircText.description.copyWith(
+                          color: context.pircColors.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ],
-                  onChanged: (value) {
-                    if (value != null) language.onChanged(value);
-                  },
                 ),
+                trailing: Icon(
+                  LucideIcons.chevronRight,
+                  size: PircIconSizes.small,
+                  color: context.pircColors.onSurfaceVariant,
+                ),
+                onTap: () async {
+                  final value = await _showLanguageSheet(
+                    context,
+                    language.value,
+                  );
+                  if (value != null) language.onChanged(value);
+                },
               ),
             ],
           ],
@@ -138,6 +153,91 @@ class PircDrawer extends StatelessWidget {
     ),
   );
 }
+
+Map<String, String> _languageLabels(BuildContext context) => {
+  'system': context.l10n.systemLanguage,
+  'zh': context.l10n.chineseLanguage,
+  'en': context.l10n.englishLanguage,
+  'ja': context.l10n.japaneseLanguage,
+};
+
+Future<String?> _showLanguageSheet(
+  BuildContext context,
+  String selected,
+) => showModalBottomSheet<String>(
+  context: context,
+  isScrollControlled: true,
+  useSafeArea: true,
+  backgroundColor: context.pircColors.surface,
+  shape: const RoundedRectangleBorder(borderRadius: PircRadii.dialog),
+  clipBehavior: Clip.antiAlias,
+  builder: (context) => SafeArea(
+    top: false,
+    child: Center(
+      heightFactor: 1,
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: PircLayout.maxContentWidth,
+          maxHeight:
+              MediaQuery.sizeOf(context).height * PircLayout.sheetHeightFactor,
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            key: const Key('app-language-sheet'),
+            padding: const EdgeInsets.all(PircSpacing.s20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        context.l10n.language,
+                        style: context.pircText.section,
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: context.l10n.closeMenu,
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(
+                        LucideIcons.x,
+                        size: PircIconSizes.chevron,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: PircSpacing.s12),
+                for (final entry in _languageLabels(context).entries)
+                  Semantics(
+                    selected: entry.key == selected,
+                    child: ListTile(
+                      key: ValueKey('app-language-${entry.key}'),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: PircSpacing.s12,
+                      ),
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: PircRadii.button,
+                      ),
+                      title: Text(entry.value, style: context.pircText.body),
+                      trailing: entry.key == selected
+                          ? Icon(
+                              LucideIcons.check,
+                              size: PircIconSizes.small,
+                              color: context.pircColors.primary,
+                            )
+                          : null,
+                      onTap: () => Navigator.pop(context, entry.key),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ),
+  ),
+);
 
 class _ComputerTile extends StatelessWidget {
   const _ComputerTile({
