@@ -62,6 +62,7 @@ String resultLabel(Map<String, dynamic> c) => switch (c['status']) {
     'MODEL_NOT_FOUND' => 'Model not found. Select one from the list.',
     'MODEL_AUTH_REQUIRED' =>
       'Set up authentication for this model on the device first.',
+    'MODEL_NO_IMAGES' => 'The selected model does not support images',
     'INVALID_THINKING_LEVEL' ||
     'INVALID_ARGUMENT' ||
     'COMPACT_FAILED' ||
