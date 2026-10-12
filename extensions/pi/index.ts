@@ -1,3 +1,4 @@
+import { ImageCatalog } from "./images.ts";
 import { randomUUID } from "node:crypto";
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
@@ -22,6 +23,7 @@ type RecordEntry = { original: string; result: Envelope; created: number };
 const MAX_RECORDS = 10000;
 export default function pirc(pi: ExtensionAPI) {
   let instanceId = randomUUID();
+  const images = new ImageCatalog();
   let ctx: ExtensionContext | undefined;
   let session: SessionSnapshot;
   let socket: WebSocket | undefined;
@@ -181,16 +183,51 @@ export default function pirc(pi: ExtensionAPI) {
     if (
       !active ||
       !ctx ||
-      !["stop", "prompt", "builtin", "close_session"].includes(m.type)
+      !["stop", "prompt", "builtin", "close_session", "read_image"].includes(
+        m.type,
+      )
     )
       return;
     if (
       m.type !== "stop" &&
       m.type !== "prompt" &&
       m.type !== "builtin" &&
-      m.type !== "close_session"
+      m.type !== "close_session" &&
+      m.type !== "read_image"
     )
       return;
+    if (m.type === "read_image") {
+      if (
+        m.generation_id !== generation ||
+        m.session_id !== session.session_id ||
+        m.instance_id !== instanceId
+      ) {
+        result(e.request_id, "rejected", "STALE_INSTANCE");
+        return;
+      }
+      try {
+        let chunk = images.read(m.image_id, m.offset);
+        if (!chunk) {
+          for (const entry of ctx.sessionManager.getBranch()) {
+            if (entry.type === "message" && "content" in entry.message)
+              images.collect(entry.message.content);
+            chunk = images.read(m.image_id, m.offset);
+            if (chunk) break;
+          }
+        }
+        if (!chunk)
+          result(
+            e.request_id,
+            "rejected",
+            "IMAGE_UNAVAILABLE",
+            "Image is no longer available. Reload the session and retry.",
+          );
+        else result(e.request_id, "completed", null, null, chunk);
+      } catch (error) {
+        result(e.request_id, "rejected", "INVALID_ARGUMENT", String(error));
+      }
+      return;
+    }
     const original = JSON.stringify(e.message);
     const cached = records.get(e.request_id);
     if (cached) {
@@ -482,6 +519,7 @@ export default function pirc(pi: ExtensionAPI) {
       !["127.0.0.1", "localhost", "[::1]"].includes(url.hostname)
     )
       throw new Error("Extension requires loopback WebSocket");
+    images.clear();
     active = true;
     closing = false;
     settled = context.isIdle();
@@ -489,7 +527,7 @@ export default function pirc(pi: ExtensionAPI) {
     syncingHistory = true;
     localCompacting = false;
     session = {
-      capabilities: ["local_ui_state"],
+      capabilities: ["image_read", "local_ui_state"],
       session_id: context.sessionManager.getSessionId(),
       instance_id: instanceId,
       cwd: context.cwd,
@@ -677,6 +715,7 @@ export default function pirc(pi: ExtensionAPI) {
         append("user_message", {
           message_id: entry.id,
           text: text(message.content),
+          images: images.collect(message.content),
         });
       } else if (message.role === "assistant") {
         for (const [content_index, block] of message.content.entries()) {
@@ -705,6 +744,7 @@ export default function pirc(pi: ExtensionAPI) {
           message_id: entry.id,
           content_index: 0,
           text: text(message.content),
+          images: images.collect(message.content),
         });
       } else if (message.role === "bashExecution") {
         append("tool_start", {
@@ -726,6 +766,7 @@ export default function pirc(pi: ExtensionAPI) {
           tool_call_id: message.toolCallId,
           tool_name: message.toolName,
           text: text(message.content),
+          images: images.collect(message.content),
           is_error: message.isError,
         });
     }
@@ -761,6 +802,7 @@ export default function pirc(pi: ExtensionAPI) {
       event("user_message", {
         message_id: randomUUID(),
         text: text(e.message.content),
+        images: images.collect(e.message.content),
       });
       if (
         pendingPrompt &&
@@ -841,6 +883,7 @@ export default function pirc(pi: ExtensionAPI) {
         message_id: randomUUID(),
         content_index: 0,
         text: text(e.message.content),
+        images: images.collect(e.message.content),
       });
       return;
     }
@@ -901,6 +944,7 @@ export default function pirc(pi: ExtensionAPI) {
         tool_name: e.toolName,
         // Pi partial results contain cumulative output, not append-only chunks.
         text: text(e.partialResult?.content),
+        images: images.collect(e.partialResult?.content),
       });
   });
   pi.on("tool_execution_end", (e) => {
@@ -909,6 +953,7 @@ export default function pirc(pi: ExtensionAPI) {
         tool_call_id: e.toolCallId,
         tool_name: e.toolName,
         text: text(e.result?.content),
+        images: images.collect(e.result?.content),
         is_error: e.isError,
       });
   });

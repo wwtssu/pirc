@@ -7,6 +7,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'src/rust/api/client.dart' as bridge;
 import 'connection_store.dart';
 
+Uint8List decodeImage(String encoded) => base64Decode(encoded);
+
 Map<String, dynamic> decodeView(String encoded) =>
     jsonDecode(encoded) as Map<String, dynamic>;
 Future<Map<String, dynamic>> decodeIncomingView(String encoded) async =>
@@ -220,6 +222,62 @@ class PircController extends ChangeNotifier {
       );
     }
     return data['path'] as String;
+  }
+
+  Future<Uint8List> readImage(
+    String instance,
+    String id, {
+    bool Function()? cancelled,
+  }) async {
+    final client = _client;
+    if (client == null || connection != 'connected') {
+      throw StateError('Wait for the connection to recover, then retry.');
+    }
+    final parts = <String>[];
+    var offset = 0;
+    int? total;
+    String? mime;
+    do {
+      if (cancelled?.call() == true) {
+        throw StateError('Image loading cancelled');
+      }
+      if (!identical(client, _client)) {
+        throw StateError('The device connection changed');
+      }
+      final reply = jsonDecode(
+        await bridge.readImage(
+          client: client,
+          instanceId: instance,
+          imageId: id,
+          offset: offset,
+        ),
+      ) as Map<String, dynamic>;
+      final data = reply['data'] as Map<String, dynamic>?;
+      if (reply['type'] != 'command_result' ||
+          reply['status'] != 'completed' ||
+          data?['kind'] != 'image_chunk') {
+        throw StateError(reply['detail'] as String? ?? 'Image is unavailable');
+      }
+      final chunk = data!['data'] as String;
+      final length = data['total'] as int;
+      final format = data['mime_type'] as String;
+      if (data['offset'] != offset ||
+          length <= 0 ||
+          length > 28 * 1024 * 1024 ||
+          chunk.isEmpty ||
+          chunk.length > 49152 ||
+          chunk.length % 4 != 0 ||
+          offset + chunk.length > length ||
+          total != null && total != length ||
+          mime != null && mime != format) {
+        throw StateError('Invalid image response');
+      }
+      total = length;
+      mime = format;
+      parts.add(chunk);
+      offset += chunk.length;
+    } while (offset < total);
+    return compute(decodeImage, parts.join());
   }
 
   Future<String> launchSession(

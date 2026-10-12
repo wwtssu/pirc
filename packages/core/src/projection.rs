@@ -812,7 +812,7 @@ impl SessionView {
                 }
             }
             self.items
-                .retain(|i| !(i.role == "assistant" && i.text.is_empty()));
+                .retain(|i| !(i.role == "assistant" && i.text.is_empty() && i.images.is_empty()));
             return;
         }
         let message_id = event.message_id.as_deref().unwrap_or("unknown");
@@ -861,7 +861,8 @@ impl SessionView {
             self.items.retain(|i| {
                 !(i.message_id.as_deref() == Some(message_id)
                     && i.role == "assistant"
-                    && i.text.is_empty())
+                    && i.text.is_empty()
+                    && i.images.is_empty())
             });
             return;
         }
@@ -922,6 +923,7 @@ impl SessionView {
             .position(|i| i.id == id)
             .unwrap_or_else(|| {
                 self.items.push(Item {
+                    images: vec![],
                     id: id.clone(),
                     first_seq: seq,
                     last_seq: 0,
@@ -1003,6 +1005,9 @@ impl SessionView {
         item.complete |= complete;
         item.is_error |= event.is_error;
         item.truncated |= event.truncated;
+        if !event.images.is_empty() {
+            item.images = event.images;
+        }
         for value in std::iter::once(&mut item.text).chain(item.arguments.iter_mut()) {
             if value.len() > 64 * 1024 {
                 let mut end = 64 * 1024;
@@ -1031,6 +1036,49 @@ impl SessionView {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn image_only_blocks_survive_completion() {
+        let mut session = SessionView::new(snapshot("i"));
+        let image = ImageRef {
+            id: "a".repeat(64),
+            mime_type: "image/png".into(),
+            size: 68,
+        };
+        let event = EventData {
+            images: vec![image.clone()],
+            kind: EventKind::TextEnd,
+            message_id: Some("m".into()),
+            content_index: Some(0),
+            text: Some("".into()),
+            tool_call_id: None,
+            tool_name: None,
+            is_error: false,
+            truncated: false,
+        };
+        session.event(1, 1, event.clone());
+        session.event(
+            2,
+            2,
+            EventData {
+                images: vec![],
+                kind: EventKind::MessageEnd,
+                text: None,
+                ..event.clone()
+            },
+        );
+        session.event(
+            3,
+            3,
+            EventData {
+                images: vec![],
+                kind: EventKind::AgentSettled,
+                text: None,
+                ..event
+            },
+        );
+        assert_eq!(session.items.len(), 1);
+        assert_eq!(session.items[0].images, vec![image]);
+    }
     #[test]
     fn exit_is_explicit_managed_idle_and_cannot_be_repeated_or_resent() {
         let mut p = Projection::default();
@@ -1172,6 +1220,7 @@ mod tests {
             source_seq: seq,
             seq,
             event: EventData {
+                images: vec![],
                 kind,
                 message_id: Some("m".into()),
                 content_index: None,
@@ -1197,6 +1246,7 @@ mod tests {
             source_seq: seq,
             seq,
             event: EventData {
+                images: vec![],
                 kind,
                 message_id: Some("m".into()),
                 content_index: index,
@@ -1497,6 +1547,7 @@ mod tests {
             source_seq: 3,
             seq: 3,
             event: EventData {
+                images: vec![],
                 kind: EventKind::MessageDelta,
                 message_id: Some("m".into()),
                 content_index: None,

@@ -594,6 +594,11 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
                             instance_id: i,
                             ..
                         }
+                        | Message::ReadImage {
+                            session_id: s,
+                            instance_id: i,
+                            ..
+                        }
                         | Message::CloseSession {
                             session_id: s,
                             instance_id: i,
@@ -607,8 +612,12 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
                         _ => false,
                     };
                     if expected {
+                        let image_read = matches!(cmd.original.message, Message::ReadImage { .. });
                         cmd.result = e.clone();
-                        app.publish(e);
+                        app.publish(e.clone());
+                        if image_read {
+                            r.commands.remove(&e.request_id);
+                        }
                     }
                 }
             }
@@ -882,6 +891,12 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
             instance_id,
             ..
         }
+        | Message::ReadImage {
+            generation_id,
+            session_id,
+            instance_id,
+            ..
+        }
         | Message::CloseSession {
             generation_id,
             session_id,
@@ -1002,6 +1017,23 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
                     )];
                 }
             }
+            if let Message::ReadImage {
+                image_id, offset, ..
+            } = &e.message
+            {
+                if image_id.len() != 64
+                    || !image_id.bytes().all(|b| b.is_ascii_hexdigit())
+                    || offset % 4 != 0
+                    || *offset > 28 * 1024 * 1024
+                {
+                    return vec![reject(
+                        &e.request_id,
+                        session_id,
+                        instance_id,
+                        "INVALID_ARGUMENT",
+                    )];
+                }
+            }
             if target.tx.try_send(e.clone()).is_err() {
                 return vec![error(
                     &e.request_id,
@@ -1119,6 +1151,68 @@ pub async fn run_with_port(port: Option<u16>) {
 
 #[cfg(test)]
 mod tests {
+    #[tokio::test]
+    async fn image_reads_are_scoped_available_while_running_and_not_cached() {
+        let app = app();
+        let (tx, mut rx) = mpsc::channel(8);
+        let mut running = session();
+        running.state = SessionState::Running;
+        from_extension(
+            &app,
+            "owner",
+            &tx,
+            packet(Message::Register { session: running }),
+        )
+        .await;
+        let request = Envelope::new(
+            "image",
+            Message::ReadImage {
+                generation_id: "g".into(),
+                session_id: "s".into(),
+                instance_id: "i".into(),
+                image_id: "a".repeat(64),
+                offset: 0,
+            },
+        );
+        assert!(from_control(&app, request.clone()).await.is_empty());
+        assert_eq!(rx.try_recv().unwrap(), request);
+        let response = Envelope::new(
+            "image",
+            Message::CommandResult {
+                session_id: "s".into(),
+                instance_id: "i".into(),
+                status: CommandStatus::Completed,
+                code: None,
+                detail: None,
+                data: Some(CommandData::ImageChunk {
+                    data: "AAAA".into(),
+                    mime_type: "image/png".into(),
+                    offset: 0,
+                    total: 4,
+                }),
+            },
+        );
+        from_extension(&app, "wrong-owner", &tx, response.clone()).await;
+        assert!(app.inner.lock().await.commands.contains_key("image"));
+        from_extension(&app, "owner", &tx, response).await;
+        assert!(!app.inner.lock().await.commands.contains_key("image"));
+        let bad = Envelope::new(
+            "bad",
+            Message::ReadImage {
+                generation_id: "g".into(),
+                session_id: "s".into(),
+                instance_id: "i".into(),
+                image_id: "a".repeat(64),
+                offset: 1,
+            },
+        );
+        let rejected = from_control(&app, bad).await;
+        assert!(
+            matches!(&rejected[0].message, Message::CommandResult { status: CommandStatus::Rejected, code: Some(code), .. } if code == "INVALID_ARGUMENT")
+        );
+        assert!(rx.try_recv().is_err());
+    }
+
     use super::*;
     #[tokio::test]
     async fn builtin_routing_requires_advertised_capability_and_preserves_output() {
@@ -1480,6 +1574,7 @@ mod tests {
                 seq: 0,
                 source_seq: 3,
                 event: EventData {
+                    images: vec![],
                     kind: EventKind::UserMessage,
                     message_id: None,
                     content_index: None,

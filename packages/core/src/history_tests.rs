@@ -18,6 +18,7 @@ fn snapshot() -> SessionSnapshot {
 }
 fn item(seq: u64, text: &str) -> Item {
     Item {
+        images: vec![],
         id: format!("user:{seq}"),
         role: "user".into(),
         text: text.into(),
@@ -77,6 +78,7 @@ fn event(p: &mut Projection, seq: u64, text: &str) -> Vec<Envelope> {
         seq,
         source_seq: seq,
         event: EventData {
+            images: vec![],
             kind: EventKind::UserMessage,
             message_id: None,
             content_index: None,
@@ -270,6 +272,7 @@ fn page_versions_do_not_duplicate_live_deltas_still_queued_on_socket() {
             seq,
             source_seq: seq,
             event: EventData {
+                images: vec![],
                 kind: EventKind::MessageDelta,
                 message_id: Some("m".into()),
                 content_index: Some(0),

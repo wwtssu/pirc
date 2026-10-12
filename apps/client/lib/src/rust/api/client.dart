@@ -66,6 +66,18 @@ Future<String> launchSession({
   createCwd: createCwd,
 );
 
+Future<String> readImage({
+  required PircClient client,
+  required String instanceId,
+  required String imageId,
+  required int offset,
+}) => RustLib.instance.api.crateApiClientReadImage(
+  client: client,
+  instanceId: instanceId,
+  imageId: imageId,
+  offset: offset,
+);
+
 Future<String> createDirectory({
   required PircClient client,
   required String parent,

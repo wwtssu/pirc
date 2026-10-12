@@ -90,6 +90,37 @@ impl Client {
         })
         .await
     }
+    pub async fn read_image(
+        &self,
+        instance_id: String,
+        image_id: String,
+        offset: u32,
+    ) -> Result<Message, String> {
+        let view = self.view();
+        let generation_id = view
+            .generation
+            .ok_or("Wait for the connection to recover, then retry.")?;
+        let session_id = view
+            .sessions
+            .iter()
+            .find(|s| s.snapshot.instance_id == instance_id)
+            .ok_or("Session not found")?
+            .snapshot
+            .session_id
+            .clone();
+        tokio::time::timeout(
+            Duration::from_secs(15),
+            self.request(Message::ReadImage {
+                generation_id,
+                session_id,
+                instance_id,
+                image_id,
+                offset,
+            }),
+        )
+        .await
+        .map_err(|_| "Loading the image timed out".to_string())?
+    }
     pub async fn create_directory(&self, parent: String, name: String) -> Result<Message, String> {
         tokio::time::timeout(
             Duration::from_secs(8),

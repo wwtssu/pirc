@@ -1,3 +1,5 @@
+import 'transcript_images.dart';
+
 import 'dart:async';
 
 import 'pirc_localizations.dart';
@@ -1017,7 +1019,8 @@ class _SessionPageState extends State<SessionPage> {
                       .where(
                         (item) =>
                             !(item['role'] == 'assistant' &&
-                                (item['text'] as String? ?? '').isEmpty),
+                                (item['text'] as String? ?? '').isEmpty &&
+                                (item['images'] as List? ?? []).isEmpty),
                       )
                       .toList()
                 : s.items)
@@ -1229,7 +1232,12 @@ class _SessionPageState extends State<SessionPage> {
                 ],
                 itemBuilder: (item) => item['role'] == 'waiting'
                     ? const _AwaitingReply(key: ValueKey('awaiting-reply'))
-                    : MessageBubble(key: ValueKey(item['id']), item: item),
+                    : MessageBubble(
+                        key: ValueKey(item['id']),
+                        item: item,
+                        model: model,
+                        instance: s.instance,
+                      ),
                 empty: _EmptyState(
                   icon: LucideIcons.messageCircle,
                   title: s.state == 'offline'
@@ -1478,7 +1486,14 @@ class _InlineNotice extends StatelessWidget {
 }
 
 class MessageBubble extends StatelessWidget {
-  const MessageBubble({super.key, required this.item});
+  const MessageBubble({
+    super.key,
+    required this.item,
+    this.model,
+    this.instance,
+  });
+  final PircController? model;
+  final String? instance;
   final Map<String, dynamic> item;
   @override
   Widget build(BuildContext context) {
@@ -1486,6 +1501,7 @@ class MessageBubble extends StatelessWidget {
     final text = item['text'] as String;
     if ((role == 'assistant' || role == 'thinking') &&
         text.isEmpty &&
+        (item['images'] as List? ?? []).isEmpty &&
         item['complete'] == true) {
       return const SizedBox.shrink();
     }
@@ -1568,6 +1584,12 @@ class MessageBubble extends StatelessWidget {
                     ),
                   ),
                 ),
+                if (model != null && instance != null)
+                  TranscriptImages(
+                    model: model!,
+                    instance: instance!,
+                    images: item['images'] as List? ?? [],
+                  ),
               ],
             ),
           ),
@@ -1610,12 +1632,18 @@ class MessageBubble extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (text.isEmpty)
+              if (text.isEmpty && (item['images'] as List? ?? []).isEmpty)
                 const LoadingIndicator()
               else if (user)
                 SelectableText(text, style: context.pircText.body)
               else
                 _SelectableMarkdown(text: text),
+              if (model != null && instance != null)
+                TranscriptImages(
+                  model: model!,
+                  instance: instance!,
+                  images: item['images'] as List? ?? [],
+                ),
               if (item['truncated'] == true)
                 Text(
                   context.l10n.contentTruncated,

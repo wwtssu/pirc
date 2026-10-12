@@ -32,3 +32,7 @@ Commands validate the session identity and state revision. After stopping, new p
 Local session changes and branch navigation register a fresh adapter instance and rebuild the selected branch's history. Visible extension messages and local shell output are included in the transcript. Remote prompt acknowledgement uses the text that Pi actually submits after preprocessing.
 
 Blocking extension UI prompts expose their kind and title through session state. They remain interactive in the terminal: Pi's public UI events do not expose selectable options or a remote response callback. Custom TUI components and plugin renderers use their textual tool output remotely.
+
+## Images
+
+User and tool-result images are preserved in the transcript. The client loads PNG, JPEG, WebP, and GIF content in bounded chunks over the encrypted connection; historical images are read from the active agent session. Images larger than 20 MiB are excluded. Downloads do not require the agent to be idle.

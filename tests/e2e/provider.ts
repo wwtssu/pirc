@@ -120,6 +120,22 @@ function stream(
           partial: output,
         });
         output.stopReason = "toolUse";
+      } else if (prompt === "IMAGE") {
+        const call = {
+          type: "toolCall" as const,
+          id: randomUUID(),
+          name: "e2e_image",
+          arguments: {},
+        };
+        output.content.push(call);
+        output.stopReason = "toolUse";
+        s.push({ type: "toolcall_start", contentIndex: 0, partial: output });
+        s.push({
+          type: "toolcall_end",
+          contentIndex: 0,
+          toolCall: call,
+          partial: output,
+        });
       } else if (prompt.startsWith("TOOL")) {
         const call = {
           type: "toolCall" as const,
@@ -231,6 +247,30 @@ export default function (pi: ExtensionAPI) {
         content: [{ type: "text", text: "wait completed" }],
         details: {},
       };
+    },
+  });
+  pi.registerTool({
+    name: "e2e_image",
+    label: "E2E image",
+    description: "Image transport fixture",
+    parameters: Type.Object({}),
+    async execute() {
+      return {
+        content: [
+          {
+            type: "image" as const,
+            mimeType: "image/png",
+            data: "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGP4XzDhPzJmIF0AAFteL+Hl/kTRAAAAAElFTkSuQmCC",
+          },
+        ],
+        details: {},
+      };
+    },
+  });
+  pi.registerCommand("test-dialog", {
+    description: "Local UI fixture",
+    async handler(_args, ctx) {
+      await ctx.ui.confirm("Confirm fixture", "Confirm locally");
     },
   });
   pi.registerCommand("test-resume", {

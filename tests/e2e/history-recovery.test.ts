@@ -76,7 +76,10 @@ test("new server generations rebuild durable history and unfinished streams with
         role: "toolResult",
         toolCallId: "saved-tool",
         toolName: "bash",
-        content: [{ type: "text", text: "saved output" }],
+        content: [
+          { type: "text", text: "saved output" },
+          { type: "image", mimeType: "image/png", data: "AAAA" },
+        ],
         isError: false,
       },
     },
@@ -137,8 +140,6 @@ test("new server generations rebuild durable history and unfinished streams with
     hooks.get("session_start")!({}, ctx);
     const ws = Socket.current;
     ws.welcome("first");
-    const initialInstance = ws.frames.find((f) => f.message.type === "register")
-      .message.session.instance_id;
     assert.equal(
       ws.events().filter((e) => e.event.text === "saved answer").length,
       1,
@@ -156,6 +157,33 @@ test("new server generations rebuild durable history and unfinished streams with
         ),
     );
 
+    const ref = ws
+      .events()
+      .find(
+        (e) => e.event.tool_call_id === "saved-tool" && e.event.images?.length,
+      )?.event.images[0];
+    assert(ref);
+    const registered = ws.frames.find((f) => f.message.type === "register")
+      .message.session;
+    ws.dispatchEvent(
+      new MessageEvent("message", {
+        data: JSON.stringify({
+          version: 1,
+          request_id: "image-read",
+          message: {
+            type: "read_image",
+            generation_id: "first",
+            session_id: registered.session_id,
+            instance_id: registered.instance_id,
+            image_id: ref.id,
+            offset: 0,
+          },
+        }),
+      }),
+    );
+    const chunk = ws.frames.find((f) => f.request_id === "image-read").message;
+    assert.equal(chunk.status, "completed");
+    assert.equal(chunk.data.data, "AAAA");
     hooks.get("ui_prompt_start")!({ kind: "confirm", title: "Allow action?" });
     assert.deepEqual(
       ws.frames.filter((f) => f.message.type === "snapshot").at(-1).message
@@ -168,6 +196,7 @@ test("new server generations rebuild durable history and unfinished streams with
         .session.ui_prompt,
       undefined,
     );
+
     assert(ws.events().some((e) => e.event.text === "saved output"));
     const before = ws.events().length;
     ws.welcome("first");
@@ -310,14 +339,15 @@ test("new server generations rebuild durable history and unfinished streams with
     const next = nextSocket.frames.find((f) => f.message.type === "register")
       .message.session;
     assert.equal(next.session_id, "next-session");
-    assert.notEqual(next.instance_id, initialInstance);
+    assert.notEqual(next.instance_id, registered.instance_id);
     assert(
       ws.frames.some(
         (f) =>
           f.message.type === "unregister" &&
-          f.message.instance_id === initialInstance,
+          f.message.instance_id === registered.instance_id,
       ),
     );
+    assert(!nextSocket.events().some((e) => e.event.images?.length));
   } finally {
     hooks.get("session_shutdown")?.();
     globalThis.WebSocket = original;

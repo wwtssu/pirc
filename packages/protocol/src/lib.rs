@@ -97,6 +97,12 @@ pub struct SessionInfo {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
 pub enum CommandData {
+    ImageChunk {
+        data: String,
+        mime_type: String,
+        offset: u32,
+        total: u32,
+    },
     Model {
         current: Option<ModelInfo>,
         models: Vec<ModelInfo>,
@@ -204,7 +210,17 @@ pub enum EventKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
+pub struct ImageRef {
+    pub id: String,
+    pub mime_type: String,
+    pub size: u32,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
 pub struct EventData {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<ImageRef>,
     pub kind: EventKind,
     pub message_id: Option<String>,
     /// Stable content block position within an assistant message.
@@ -220,6 +236,8 @@ pub struct EventData {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct TranscriptItem {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<ImageRef>,
     pub id: String,
     pub role: String,
     pub text: String,
@@ -313,6 +331,13 @@ pub enum Message {
     },
     WorkingDirectoryReady {
         path: String,
+    },
+    ReadImage {
+        generation_id: String,
+        session_id: String,
+        instance_id: String,
+        image_id: String,
+        offset: u32,
     },
     LaunchSession {
         generation_id: String,

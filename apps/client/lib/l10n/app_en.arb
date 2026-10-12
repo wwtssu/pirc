@@ -468,5 +468,7 @@
   "createWorkingDirectoryQuestion": "Create working directory?",
   "createWorkingDirectoryDescription": "This directory does not exist. Create it and any missing parent directories, then continue?",
   "createAndContinue": "Create and continue",
-  "workingDirectoryNotDirectory": "Working directory path is not a directory."
+  "workingDirectoryNotDirectory": "Working directory path is not a directory.",
+  "imageUnavailable": "Image unavailable",
+  "viewImage": "View image"
 }

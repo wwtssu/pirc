@@ -15,6 +15,39 @@
         {
           "additionalProperties": false,
           "properties": {
+            "data": {
+              "type": "string"
+            },
+            "kind": {
+              "const": "image_chunk",
+              "type": "string"
+            },
+            "mime_type": {
+              "type": "string"
+            },
+            "offset": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "total": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            }
+          },
+          "required": [
+            "kind",
+            "data",
+            "mime_type",
+            "offset",
+            "total"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
             "current": {
               "anyOf": [
                 {
@@ -168,6 +201,12 @@
             "null"
           ]
         },
+        "images": {
+          "items": {
+            "$ref": "#/$defs/ImageRef"
+          },
+          "type": "array"
+        },
         "is_error": {
           "type": "boolean"
         },
@@ -240,6 +279,28 @@
         "around"
       ],
       "type": "string"
+    },
+    "ImageRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "mime_type": {
+          "type": "string"
+        },
+        "size": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "mime_type",
+        "size"
+      ],
+      "type": "object"
     },
     "Message": {
       "oneOf": [
@@ -618,6 +679,41 @@
           "required": [
             "type",
             "path"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "generation_id": {
+              "type": "string"
+            },
+            "image_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "offset": {
+              "format": "uint32",
+              "minimum": 0,
+              "type": "integer"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "read_image",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "image_id",
+            "offset"
           ],
           "type": "object"
         },
@@ -1463,6 +1559,12 @@
         },
         "id": {
           "type": "string"
+        },
+        "images": {
+          "items": {
+            "$ref": "#/$defs/ImageRef"
+          },
+          "type": "array"
         },
         "is_error": {
           "type": "boolean"

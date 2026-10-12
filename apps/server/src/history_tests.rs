@@ -46,6 +46,7 @@ async fn event(app: &App, tx: &Sender, seq: u64, kind: EventKind, text: &str, in
             source_seq: seq,
             seq: 0,
             event: EventData {
+                images: vec![],
                 kind: kind.clone(),
                 message_id: Some("m".into()),
                 content_index: index,

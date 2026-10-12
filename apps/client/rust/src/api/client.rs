@@ -76,6 +76,20 @@ pub async fn launch_session(
     )
     .map_err(|e| e.to_string())
 }
+pub async fn read_image(
+    client: &PircClient,
+    instance_id: String,
+    image_id: String,
+    offset: u32,
+) -> Result<String, String> {
+    serde_json::to_string(
+        &client
+            .inner
+            .read_image(instance_id, image_id, offset)
+            .await?,
+    )
+    .map_err(|e| e.to_string())
+}
 pub async fn create_directory(
     client: &PircClient,
     parent: String,

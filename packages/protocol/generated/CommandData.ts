@@ -2,4 +2,4 @@
 import type { ModelInfo } from "./ModelInfo";
 import type { SessionInfo } from "./SessionInfo";
 
-export type CommandData = { "kind": "model", current: ModelInfo | null, models: Array<ModelInfo>, } | { "kind": "thinking", level: string, levels: Array<string>, } | { "kind": "name", name: string | null, } | { "kind": "session", info: SessionInfo, } | { "kind": "compact", summary: string, tokens_before: number, };
+export type CommandData = { "kind": "image_chunk", data: string, mime_type: string, offset: number, total: number, } | { "kind": "model", current: ModelInfo | null, models: Array<ModelInfo>, } | { "kind": "thinking", level: string, levels: Array<string>, } | { "kind": "name", name: string | null, } | { "kind": "session", info: SessionInfo, } | { "kind": "compact", summary: string, tokens_before: number, };

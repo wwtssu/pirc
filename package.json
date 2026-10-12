@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit",
     "protocol:generate": "cargo run -p pirc-protocol --bin generate",
     "test:e2e": "node tests/e2e/run.mjs",
-    "test:protocol": "node --test tests/e2e/protocol.test.ts tests/e2e/builtins.test.ts tests/e2e/exit.test.ts tests/e2e/history-recovery.test.ts",
+    "test:protocol": "node --test tests/e2e/protocol.test.ts tests/e2e/builtins.test.ts tests/e2e/exit.test.ts tests/e2e/history-recovery.test.ts tests/e2e/images.test.ts",
     "test:e2e:real": "PIRC_REAL_MODEL_SMOKE=1 node tests/e2e/run.mjs",
     "control": "node scripts/control.mjs",
     "test:flutter:e2e": "node tests/e2e/flutter.mjs",

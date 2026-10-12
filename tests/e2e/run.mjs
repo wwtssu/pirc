@@ -723,7 +723,9 @@ try {
   );
   const restoredIdle = await history(active(s2.instance_id));
   assert.deepEqual(content(restoredIdle), idleHistory);
-  assert(restoredIdle.items.some(item => item.role === "error" && item.is_error));
+  assert(
+    restoredIdle.items.some((item) => item.role === "error" && item.is_error),
+  );
   const rebuilt = await history(active(s.instance_id));
   assert.equal(rebuilt.last_seq, rebuilt.source_seq);
   for (const item of partialHistory)
@@ -759,13 +761,77 @@ try {
     "terminal after remote controls",
   );
   await controller.state(s.instance_id, "idle");
+
+  const imageMark = controller.messages.length;
+  const imageData =
+    "iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAYAAACp8Z5+AAAAEklEQVR4nGP4XzDhPzJmIF0AAFteL+Hl/kTRAAAAAElFTkSuQmCC";
+  const imageSession = active(s.instance_id);
+  await prompt(imageSession, "IMAGE");
+  await controller.wait(
+    () =>
+      controller.frame(
+        (e) =>
+          e.message.type === "event" &&
+          e.message.instance_id === s.instance_id &&
+          e.message.event.kind === "tool_end" &&
+          e.message.event.images?.length,
+        imageMark,
+      ),
+    "image tool result",
+  );
+  await controller.state(s.instance_id, "idle");
+  const imageEvent = controller.frame(
+    (e) =>
+      e.message.type === "event" &&
+      e.message.instance_id === s.instance_id &&
+      e.message.event.kind === "tool_end" &&
+      e.message.event.images?.length,
+    imageMark,
+  ).message.event;
+  const imageRead = controller.send({
+    type: "read_image",
+    ...base(active(s.instance_id)),
+    image_id: imageEvent.images[0].id,
+    offset: 0,
+  });
+  const imageResult = (await controller.result(imageRead, "completed")).message
+    .data;
+  assert.equal(imageResult.kind, "image_chunk");
+  assert.equal(imageResult.data, imageData);
+  const imageHistory = await history(active(s.instance_id));
+  assert(
+    imageHistory.items.some(
+      (item) =>
+        item.role === "tool" &&
+        item.images?.some((image) => image.id === imageEvent.images[0].id),
+    ),
+  );
+  note(
+    "tool images survive history with scoped chunk reads",
+  );
+  input(first.pane, "/test-dialog");
+  await controller.wait(
+    () => active(s.instance_id)?.ui_prompt?.title === "Confirm fixture",
+    "blocking UI title",
+  );
+  tmux("send-keys", "-t", first.pane, "Escape");
+  await controller.wait(
+    () => !active(s.instance_id)?.needs_local_attention,
+    "local UI settled",
+  );
+  note(
+    "blocking extension UI exposes its title and remains locally interactive",
+  );
   note("terminal remains usable after remote controls and lifecycle changes");
   checks.push("Controlled-provider acceptance passed");
   if (process.env.PIRC_REAL_MODEL_SMOKE === "1") {
     const real = launch("pi-real");
     const rs = await registration(real.folder);
     const mark = controller.messages.length;
-    await prompt(active(rs.instance_id), "Reply only PIRC_SMOKE_OK. Do not use tools.");
+    await prompt(
+      active(rs.instance_id),
+      "Reply only PIRC_SMOKE_OK. Do not use tools.",
+    );
     await controller.wait(
       () => eventFrame("message_delta", rs.instance_id, mark),
       "actual model streaming",
