@@ -1609,6 +1609,12 @@ class MessageBubble extends StatelessWidget {
         item['complete'] == true) {
       return const SizedBox.shrink();
     }
+    if (role == 'assistant' &&
+        text.isEmpty &&
+        (item['images'] as List? ?? []).isEmpty &&
+        item['is_error'] != true) {
+      return const _AwaitingReply();
+    }
     if (role == 'tool' || role == 'thinking' || role == 'compact') {
       final complete = item['complete'] == true;
       final arguments = item['arguments'] as String? ?? '';
