@@ -293,6 +293,9 @@ void main() {
       await tester.pump();
       expect(find.text('Waiting for response…'), findsOneWidget);
       expect(find.text('Pi'), findsNothing);
+      // The projection removes the empty assistant placeholder when a
+      // thinking block starts. It is not a second pending response.
+      items.removeLast();
       items.add({
         'id': 't',
         'role': 'thinking',
@@ -303,7 +306,12 @@ void main() {
       await tester.pump();
       expect(find.text('Waiting for response…'), findsNothing);
       items.removeLast();
-      items[1]['text'] = 'reply';
+      items.add({
+        'id': 'a',
+        'role': 'assistant',
+        'text': 'reply',
+        'complete': false,
+      });
       model.applyDecodedView(data);
       await tester.pump();
       expect(find.text('Waiting for response…'), findsNothing);

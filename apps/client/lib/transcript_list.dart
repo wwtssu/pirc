@@ -190,16 +190,14 @@ class TranscriptListState extends State<TranscriptList> {
   }
 
   void rebaseReadingAnchor() {
-    if (rebaseScheduled || selecting || scrolling) return;
+    // Keep the origin on the reader during drags and inertia too. Otherwise,
+    // output below shifts history while the list is still anchored at its end.
+    // correctPixels preserves the active gesture while changing coordinates.
+    if (rebaseScheduled || selecting) return;
     rebaseScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       rebaseScheduled = false;
-      if (!mounted ||
-          pinned ||
-          resetting ||
-          !scroll.hasClients ||
-          selecting ||
-          scrolling) {
+      if (!mounted || pinned || resetting || !scroll.hasClients || selecting) {
         return;
       }
       final root = viewport.currentContext?.findRenderObject();

@@ -112,6 +112,209 @@ Future<void> close(WidgetTester tester, PagedController model) async {
 }
 
 void main() {
+  testWidgets(
+    'streaming during inertia has the same reading motion as scrolling alone',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Future<double> displacement(bool stream) async {
+        Map<String, dynamic> frame(int lines, int seq) => data([
+          ...items(0, 40),
+          {
+            'id': 'live-answer',
+            'role': 'assistant',
+            'text': List.filled(lines, 'Live output').join('\n\n'),
+            'complete': false,
+            'first_seq': 101,
+            'last_seq': seq,
+          },
+        ], seq: seq);
+        final model = PagedController()..applyDecodedView(frame(1, 101));
+        await open(tester, model);
+        await tester.pumpAndSettle();
+        await tester.fling(
+          find.byKey(const Key('transcript')),
+          const Offset(0, 250),
+          1000,
+        );
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(position(tester).isScrollingNotifier.value, isTrue);
+        final target = visibleBlock(tester);
+        final top = tester.getTopLeft(target).dy;
+        if (stream) model.applyDecodedView(frame(30, 102));
+        for (var i = 0; i < 3; i++) {
+          await tester.pump(const Duration(milliseconds: 20));
+        }
+        expect(target, findsOneWidget);
+        final moved = tester.getTopLeft(target).dy - top;
+        await close(tester, model);
+        return moved;
+      }
+
+      final ordinary = await displacement(false);
+      final streamed = await displacement(true);
+      expect(streamed, closeTo(ordinary, 1));
+    },
+  );
+  testWidgets(
+    'reading history during an active drag stays stable when output below grows',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Map<String, dynamic> frame(int lines, int seq) {
+        final result = data([
+          ...items(0, 40),
+          {
+            'id': 'live-answer',
+            'role': 'assistant',
+            'text': List.filled(lines, 'Live output').join('\n\n'),
+            'complete': false,
+            'first_seq': 101,
+            'last_seq': seq,
+          },
+        ], seq: seq);
+        result['sessions'][0]['snapshot']['state'] = 'running';
+        return result;
+      }
+
+      final model = PagedController()..applyDecodedView(frame(1, 101));
+      await open(tester, model);
+      await tester.pumpAndSettle();
+      final viewport = tester.getRect(find.byKey(const Key('transcript')));
+      final gesture = await tester.startGesture(viewport.center);
+      await gesture.moveBy(const Offset(0, 180));
+      await tester.pump();
+      await gesture.moveBy(const Offset(0, 80));
+      await tester.pump();
+      final target = visibleBlock(tester);
+      final top = tester.getTopLeft(target).dy;
+      model.applyDecodedView(frame(30, 102));
+      await tester.pump();
+      await tester.pump();
+      expect(target, findsOneWidget);
+      expect(tester.getTopLeft(target).dy, closeTo(top, .5));
+      await gesture.up();
+      await tester.pumpAndSettle();
+      await close(tester, model);
+    },
+  );
+  testWidgets(
+    'shrinking an offscreen tool result preserves the historical reading position',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      Map<String, dynamic> frame(String output, int seq) => data([
+        ...items(0, 10),
+        {
+          'id': 'tail-tool',
+          'role': 'tool',
+          'title': 'read',
+          'text': output,
+          'complete': true,
+          'phase': 'completed',
+          'first_seq': 101,
+          'last_seq': seq,
+        },
+      ], seq: seq);
+      final model = PagedController()
+        ..applyDecodedView(
+          frame(List.filled(30, 'Streaming tool output').join('\n'), 101),
+        );
+      await open(tester, model);
+      await tester.pumpAndSettle();
+      final tile = find.byType(ExpansionTile);
+      await tester.tapAt(tester.getTopLeft(tile) + const Offset(24, 24));
+      await tester.pumpAndSettle();
+      final scroll = position(tester);
+      scroll.jumpTo(scroll.pixels - 420);
+      await tester.pumpAndSettle();
+      final target = visibleBlock(tester);
+      final top = tester.getTopLeft(target).dy;
+      model.applyDecodedView(frame('Final tool output', 102));
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(target).dy, closeTo(top, .5));
+      await close(tester, model);
+    },
+  );
+  testWidgets(
+    'expanded historical block and reading position survive rebasing and streaming',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final entries = items(0, 40);
+      entries[25] = {
+        ...entries[25],
+        'id': 'historical-tool',
+        'role': 'tool',
+        'title': 'read',
+        'phase': 'completed',
+        'text': 'Stable historical line\nSecond historical line\nThird historical line',
+      };
+      Map<String, dynamic> streaming(int seq) {
+        final result = data(
+          [
+            ...entries,
+            {
+              'id': 'live-answer',
+              'role': 'assistant',
+              'text': List.filled(seq - 99, 'Live output').join('\n\n'),
+              'complete': false,
+              'first_seq': 101,
+              'last_seq': seq,
+            },
+          ],
+          anchor: 26,
+          seq: seq,
+        );
+        result['sessions'][0]['snapshot']['state'] = 'running';
+        return result;
+      }
+
+      final model = PagedController()..applyDecodedView(streaming(101));
+      await open(tester, model);
+      await tester.pumpAndSettle();
+      final block = find.byKey(const ValueKey<dynamic>('historical-tool'));
+      final tile = find.descendant(
+        of: block,
+        matching: find.byType(ExpansionTile),
+      );
+      await tester.tapAt(tester.getTopLeft(tile) + const Offset(24, 24));
+      await tester.pumpAndSettle();
+      final expandedHeight = tester.getSize(block).height;
+      expect(expandedHeight, greaterThan(100));
+
+      // Cross the expanded block and come back, forcing the reading anchor to
+      // move between slivers before new response events arrive.
+      final scroll = position(tester);
+      final viewport = tester.getRect(find.byKey(const Key('transcript')));
+      final travel = tester.getRect(block).bottom - viewport.top + 12;
+      scroll.jumpTo(scroll.pixels + travel);
+      await tester.pumpAndSettle();
+      scroll.jumpTo(scroll.pixels - travel);
+      await tester.pumpAndSettle();
+      final top = tester.getTopLeft(block).dy;
+      expect(tester.getRect(block).bottom, greaterThan(viewport.top));
+      expect(top, lessThan(viewport.bottom));
+      expect(tester.getSize(block).height, expandedHeight);
+      for (final seq in [102, 105, 115]) {
+        model.applyDecodedView(streaming(seq));
+        await tester.pumpAndSettle();
+        expect(tester.getSize(block).height, expandedHeight);
+        expect(tester.getTopLeft(block).dy, closeTo(top, .5));
+        expect(find.byKey(const Key('jump-to-latest')), findsOneWidget);
+      }
+      expect(tester.takeException(), isNull);
+      await close(tester, model);
+    },
+  );
   for (final startInOlderReply in [true, false]) {
     testWidgets('selection stays in its starting reply $startInOlderReply', (
       tester,
@@ -243,12 +446,15 @@ void main() {
         await tester.pump(const Duration(milliseconds: 16));
         expect(scroll.isScrollingNotifier.value, isTrue);
         for (var step = 0; step < 3; step++) {
-          final before = scroll.pixels;
+          final reading = visibleBlock(tester);
+          final before = tester.getTopLeft(reading).dy;
           await gesture.moveBy(const Offset(0, 40));
           await tester.pump(const Duration(milliseconds: 16));
           await tester.pump(const Duration(milliseconds: 16));
           expect(scroll.isScrollingNotifier.value, isTrue);
-          expect(scroll.pixels, closeTo(before - 40, .5));
+          // Anchor rebasing changes logical offsets. Content must still move
+          // with the pointer, without interrupting the drag.
+          expect(tester.getTopLeft(reading).dy, closeTo(before + 40, .5));
         }
         await gesture.up();
         await tester.pumpAndSettle();
