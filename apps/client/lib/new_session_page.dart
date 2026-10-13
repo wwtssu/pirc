@@ -665,38 +665,131 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
                       '$currentLength/$maxLength',
                       style: context.pircText.hint,
                     ),
-              decoration: InputDecoration(
-                labelText: context.l10n.sessionName,
-                hintText: context.l10n.unnamedSession,
-              ),
+              decoration: InputDecoration(hintText: context.l10n.sessionName),
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => submit(),
             ),
             if (widget.agents.length > 1) ...[
               const SizedBox(height: PircSpacing.s16),
-              DropdownButtonFormField<String>(
-                key: const Key('create-session-agent'),
-                initialValue: agentId,
-                isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Agent'),
-                icon: const Icon(
-                  LucideIcons.chevronDown,
-                  size: PircIconSizes.chevron,
-                ),
-                items: [
-                  for (final agent in widget.agents)
-                    DropdownMenuItem(
-                      value: agent.id,
-                      child: Text(
-                        agent.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+              Text('Agent', style: context.pircText.hint),
+              const SizedBox(height: PircSpacing.s8),
+              LayoutBuilder(
+                builder: (context, constraints) => MenuAnchor(
+                  alignmentOffset: const Offset(0, PircSpacing.s6),
+                  consumeOutsideTap: true,
+                  style: MenuStyle(
+                    alignment: Alignment.bottomLeft,
+                    minimumSize: WidgetStatePropertyAll(
+                      Size(constraints.maxWidth, 0),
+                    ),
+                    maximumSize: WidgetStatePropertyAll(
+                      Size(constraints.maxWidth, PircLayout.activityMaxHeight),
+                    ),
+                    padding: const WidgetStatePropertyAll(
+                      EdgeInsets.all(PircSpacing.s6),
+                    ),
+                    backgroundColor: WidgetStatePropertyAll(
+                      context.pircColors.surface,
+                    ),
+                    surfaceTintColor: const WidgetStatePropertyAll(
+                      Colors.transparent,
+                    ),
+                    shape: const WidgetStatePropertyAll(
+                      RoundedRectangleBorder(borderRadius: PircRadii.button),
+                    ),
+                    side: WidgetStatePropertyAll(
+                      BorderSide(color: context.pircColors.outlineVariant),
+                    ),
+                  ),
+                  menuChildren: [
+                    for (final agent in widget.agents)
+                      MenuItemButton(
+                        key: ValueKey('create-agent-option-${agent.id}'),
+                        onPressed: () => setState(() => agentId = agent.id),
+                        style: ButtonStyle(
+                          minimumSize: const WidgetStatePropertyAll(
+                            Size(0, PircLayout.actionSize),
+                          ),
+                          backgroundColor: WidgetStatePropertyAll(
+                            agent.id == agentId
+                                ? context.pircColors.primaryContainer
+                                : null,
+                          ),
+                          foregroundColor: WidgetStatePropertyAll(
+                            agent.id == agentId
+                                ? context.pircColors.primary
+                                : context.pircColors.onSurface,
+                          ),
+                          shape: const WidgetStatePropertyAll(
+                            RoundedRectangleBorder(
+                              borderRadius: PircRadii.composerAction,
+                            ),
+                          ),
+                          padding: const WidgetStatePropertyAll(
+                            EdgeInsets.symmetric(horizontal: PircSpacing.s12),
+                          ),
+                        ),
+                        trailingIcon: agent.id == agentId
+                            ? const Icon(
+                                LucideIcons.check,
+                                size: PircIconSizes.small,
+                              )
+                            : const SizedBox(width: PircIconSizes.small),
+                        child: Text(
+                          agent.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  builder: (context, controller, child) => SizedBox(
+                    height: PircLayout.actionSize,
+                    width: double.infinity,
+                    child: OutlinedButton(
+                      key: const Key('create-session-agent'),
+                      onPressed: () => controller.isOpen
+                          ? controller.close()
+                          : controller.open(),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: context.pircColors.onSurface,
+                        side: BorderSide(
+                          color: context.pircColors.outlineVariant,
+                        ),
+                        shape: const RoundedRectangleBorder(
+                          borderRadius: PircRadii.notice,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: PircSpacing.s12,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            LucideIcons.terminal,
+                            size: PircIconSizes.small,
+                            color: context.pircColors.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: PircSpacing.s10),
+                          Expanded(
+                            child: Text(
+                              widget.agents
+                                  .firstWhere((agent) => agent.id == agentId)
+                                  .name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: context.pircText.description,
+                            ),
+                          ),
+                          Icon(
+                            LucideIcons.chevronDown,
+                            size: PircIconSizes.small,
+                            color: context.pircColors.onSurfaceVariant,
+                          ),
+                        ],
                       ),
                     ),
-                ],
-                onChanged: (value) {
-                  if (value != null) setState(() => agentId = value);
-                },
+                  ),
+                ),
               ),
             ],
             const SizedBox(height: PircSpacing.s20),

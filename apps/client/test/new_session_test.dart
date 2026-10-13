@@ -410,6 +410,8 @@ void main() {
   testWidgets(
     'creation name can be cancelled and submitted with the keyboard',
     (tester) async {
+      await tester.binding.setSurfaceSize(const Size(320, 650));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
       final model = CreationController()..applyDecodedView(view('idle'));
       await tester.pumpWidget(
         MaterialApp(
@@ -451,8 +453,35 @@ void main() {
           tester.getBottomLeft(find.byKey(const Key('create-session-name'))).dy,
         ),
       );
+      final dialogBefore = tester.getRect(
+        find.byKey(const Key('create-session-name-dialog')),
+      );
+      final nameBefore = tester.getRect(
+        find.byKey(const Key('create-session-name')),
+      );
+      final createBefore = tester.getRect(
+        find.byKey(const Key('confirm-create-session')),
+      );
       await tester.tap(find.byKey(const Key('create-session-agent')));
       await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byKey(const Key('create-session-name-dialog'))),
+        dialogBefore,
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('create-session-name'))),
+        nameBefore,
+      );
+      expect(
+        tester.getRect(find.byKey(const Key('confirm-create-session'))),
+        createBefore,
+      );
+      expect(
+        find.byKey(const ValueKey('create-agent-option-other')),
+        findsOneWidget,
+      );
+      expect(tester.takeException(), isNull);
+
       await tester.tap(find.text('Other agent').last);
       await tester.pumpAndSettle();
       await tester.enterText(
