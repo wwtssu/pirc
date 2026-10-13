@@ -66,7 +66,7 @@ String resultLabel(Map<String, dynamic> c) => switch (c['status']) {
     'INVALID_THINKING_LEVEL' ||
     'INVALID_ARGUMENT' ||
     'COMPACT_FAILED' ||
-    'PI_ERROR' =>
+    'AGENT_ERROR' =>
       c['detail'] as String? ??
           'Operation incomplete. Check the device terminal.',
     'NO_MODEL' => 'Select a model first',
@@ -683,11 +683,39 @@ class _SessionTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      session.sessionName ?? context.l10n.unnamedSession,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: context.pircText.cardTitle,
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            session.sessionName ?? context.l10n.unnamedSession,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.pircText.cardTitle,
+                          ),
+                        ),
+                        const SizedBox(width: PircSpacing.s8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: PircSpacing.s6,
+                            vertical: PircSpacing.s2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: context.pircColors.primaryContainer,
+                            borderRadius: PircRadii.agentBadge,
+                          ),
+                          child: Text(
+                            switch (session.agentId) {
+                              'pi' => 'Pi',
+                              'omp' => 'OMP',
+                              final id => id,
+                            },
+                            style: context.pircText.path.copyWith(
+                              color: context.pircColors.primary,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: PircSpacing.s6),
                     Text(

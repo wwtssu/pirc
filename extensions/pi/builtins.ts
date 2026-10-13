@@ -11,26 +11,11 @@ import type { BuiltinCommand } from "../../packages/protocol/generated/BuiltinCo
 import type { CommandData } from "../../packages/protocol/generated/CommandData.ts";
 import type { SessionControls } from "../../packages/protocol/generated/SessionControls.ts";
 import type { SessionInfo } from "../../packages/protocol/generated/SessionInfo.ts";
-import type { SlashCommand } from "../../packages/protocol/generated/SlashCommand.ts";
 
-export const builtinCommands: SlashCommand[] = [
-  { name: "model", description: "Select the model for this session", source: "builtin" },
-  { name: "thinking", description: "Adjust the thinking level", source: "builtin" },
-  { name: "name", description: "Rename the session", source: "builtin" },
-  { name: "session", description: "View session information and usage", source: "builtin" },
-  {
-    name: "compact",
-    description: "Compact context with optional instructions",
-    source: "builtin",
-  },
-];
-export class BuiltinError extends Error {
-  readonly code: string;
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
+import { builtinCommands } from "../shared/commands.ts";
+export { builtinCommands } from "../shared/commands.ts";
+import { BuiltinError } from "../shared/errors.ts";
+export { BuiltinError } from "../shared/errors.ts";
 export function modelInfo(model: Model<Api>) {
   return {
     provider: model.provider,
@@ -194,7 +179,10 @@ export async function executeBuiltin(
       return { kind: "name", name: pi.getSessionName() ?? null };
     case "session":
       if (args)
-        throw new BuiltinError("INVALID_ARGUMENT", "/session does not accept arguments");
+        throw new BuiltinError(
+          "INVALID_ARGUMENT",
+          "/session does not accept arguments",
+        );
       return { kind: "session", info: sessionInfo(pi, ctx) };
     case "compact": {
       if (!selectedModel(ctx))

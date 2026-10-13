@@ -94,6 +94,12 @@ void main() {
           home: NewSessionPage(model: model),
         ),
       );
+      expect(find.byKey(const Key('new-session-loading')), findsOneWidget);
+      expect(find.byKey(const Key('new-session-cwd')), findsNothing);
+      expect(find.byKey(const Key('saved-session-search')), findsNothing);
+      expect(find.byType(ChoiceChip), findsNothing);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(const Key('new-session-loading')), findsOneWidget);
       model.catalog.complete(
         SavedSessionCatalog(
           agents: const [AgentInfo(id: 'pi', name: 'Pi')],
@@ -132,6 +138,12 @@ void main() {
           home: NewSessionPage(model: model),
         ),
       );
+      expect(find.byKey(const Key('new-session-loading')), findsOneWidget);
+      expect(find.byKey(const Key('new-session-cwd')), findsNothing);
+      expect(find.byKey(const Key('saved-session-search')), findsNothing);
+      expect(find.byType(ChoiceChip), findsNothing);
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(const Key('new-session-loading')), findsOneWidget);
       model.catalog.complete(
         SavedSessionCatalog(
           agents: const [

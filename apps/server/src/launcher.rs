@@ -303,6 +303,9 @@ pub(crate) fn executable_path(program: &str, search_path: &std::ffi::OsStr) -> O
             if !metadata.is_file() {
                 return false;
             }
+            if !script_runtime_available(path, search_path) {
+                return false;
+            }
             #[cfg(unix)]
             {
                 use std::os::unix::fs::PermissionsExt;
@@ -314,6 +317,60 @@ pub(crate) fn executable_path(program: &str, search_path: &std::ffi::OsStr) -> O
             }
         })
         .and_then(|path| path.canonicalize().ok())
+}
+// SDK packages can add script shims ahead of a standalone agent on PATH.
+// A missing interpreter must not hide a runnable executable later in the path.
+fn script_runtime_available(path: &std::path::Path, search_path: &std::ffi::OsStr) -> bool {
+    use std::io::Read;
+    let Ok(mut file) = std::fs::File::open(path) else {
+        return true;
+    };
+    let mut prefix = [0u8; 256];
+    let Ok(length) = file.read(&mut prefix) else {
+        return true;
+    };
+    let text = String::from_utf8_lossy(&prefix[..length]);
+    let Some(line) = text.lines().next().and_then(|line| line.strip_prefix("#!")) else {
+        return true;
+    };
+    let mut words = line.split_whitespace();
+    let Some(interpreter) = words.next() else {
+        return false;
+    };
+    let program = if std::path::Path::new(interpreter)
+        .file_name()
+        .is_some_and(|s| s == "env")
+    {
+        let Some(command) = words.find(|s| !s.starts_with('-')) else {
+            return false;
+        };
+        command
+    } else {
+        interpreter
+    };
+    let candidates = if std::path::Path::new(program).is_absolute() {
+        vec![PathBuf::from(program)]
+    } else {
+        std::env::split_paths(search_path)
+            .map(|dir| dir.join(program))
+            .collect()
+    };
+    candidates.iter().any(|candidate| {
+        std::fs::metadata(candidate).is_ok_and(|metadata| {
+            if !metadata.is_file() {
+                return false;
+            }
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                metadata.permissions().mode() & 0o111 != 0
+            }
+            #[cfg(not(unix))]
+            {
+                true
+            }
+        })
+    })
 }
 fn terminal_profile(script: &str) -> String {
     let name = std::path::Path::new(script)
@@ -377,6 +434,27 @@ fn terminal_script(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(unix)]
+    #[test]
+    fn missing_script_interpreter_does_not_hide_a_standalone_agent() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = std::env::temp_dir().join(format!("pirc-runtime-test-{}", uuid::Uuid::new_v4()));
+        let sdk = dir.join("sdk");
+        let installed = dir.join("installed");
+        std::fs::create_dir_all(&sdk).unwrap();
+        std::fs::create_dir_all(&installed).unwrap();
+        std::fs::write(sdk.join("omp"), "#!/usr/bin/env pirc-missing-runtime\n").unwrap();
+        std::fs::write(installed.join("omp"), "#!/bin/sh\n").unwrap();
+        for path in [sdk.join("omp"), installed.join("omp")] {
+            std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o700)).unwrap();
+        }
+        let search = std::env::join_paths([&sdk, &installed]).unwrap();
+        assert_eq!(
+            executable_path("omp", &search),
+            Some(installed.join("omp").canonicalize().unwrap())
+        );
+        std::fs::remove_dir_all(dir).unwrap();
+    }
     struct FixtureAdapter(&'static str);
     impl AgentAdapter for FixtureAdapter {
         fn info(&self) -> AgentInfo {

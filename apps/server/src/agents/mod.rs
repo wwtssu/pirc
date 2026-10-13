@@ -6,6 +6,7 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
 };
+mod omp;
 mod pi;
 #[cfg(test)]
 pub(crate) use pi::PiAdapter;
@@ -30,5 +31,13 @@ pub(crate) trait AgentAdapter: Send + Sync {
 
 /// Built-in adapters supported by this server installation.
 pub(crate) fn adapters(root: &Path) -> Vec<Box<dyn AgentAdapter>> {
-    vec![Box::new(pi::PiAdapter::new(root))]
+    let search_path = std::env::var_os("PATH").unwrap_or_default();
+    let mut adapters: Vec<Box<dyn AgentAdapter>> = Vec::new();
+    if crate::launcher::executable_path("pi", &search_path).is_some() {
+        adapters.push(Box::new(pi::PiAdapter::new(root)));
+    }
+    if crate::launcher::executable_path("omp", &search_path).is_some() {
+        adapters.push(Box::new(omp::OmpAdapter::new(root)));
+    }
+    adapters
 }

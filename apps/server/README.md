@@ -23,7 +23,7 @@ pirc allow XXXX-XXXX
 
 To use a different port, run `pirc server --port <port>`.
 
-The server listens on `0.0.0.0`. The client uses the device address; the extension uses a local loopback WebSocket address. The Pi adapter finds Node and Pi on PATH. The server selects the system terminal automatically, and stores its device identity, encryption key, and client approvals in `~/.pirc`.
+The server listens on `0.0.0.0`. The client uses the device address; the extension uses a local loopback WebSocket address. The server detects installed Pi and OMP executables on PATH. Their adapters use Node for saved-session discovery. The server selects the system terminal automatically, and stores its device identity, encryption key, and client approvals in `~/.pirc`.
 
 ## Endpoints and connections
 

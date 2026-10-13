@@ -10,6 +10,8 @@
     "resolveJsonModule": true
   },
   "include": [
+    "extensions/shared/**/*.ts",
+    "extensions/omp/**/*.ts",
     "extensions/pi/**/*.ts",
     "tests/e2e/**/*.ts",
     "packages/protocol/generated/**/*.ts"

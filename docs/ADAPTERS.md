@@ -44,5 +44,5 @@ The client hides controls that the adapter does not advertise.
 `image_prompt` is present. Unsupported agent-specific widgets require a textual
 representation until a shared content type is introduced.
 
-Only the Pi adapter is currently implemented. Additional adapters must preserve
+Pi and OMP adapters are implemented. See [OMP adapter](../extensions/omp/README.md) for its API mapping and validation. Additional adapters must preserve
 the shared identity, acknowledgement, replay, and history semantics.

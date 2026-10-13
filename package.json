@@ -3,19 +3,22 @@
   "private": true,
   "type": "module",
   "workspaces": [
-    "extensions/pi"
+    "extensions/pi",
+    "extensions/omp"
   ],
   "scripts": {
     "typecheck": "tsc --noEmit",
     "protocol:generate": "cargo run -p pirc-protocol --bin generate",
     "test:e2e": "node tests/e2e/run.mjs",
-    "test:protocol": "node --test tests/e2e/protocol.test.ts tests/e2e/builtins.test.ts tests/e2e/exit.test.ts tests/e2e/history-recovery.test.ts tests/e2e/images.test.ts",
+    "test:protocol": "node --test tests/e2e/protocol.test.ts tests/e2e/builtins.test.ts tests/e2e/exit.test.ts tests/e2e/history-recovery.test.ts tests/e2e/images.test.ts tests/e2e/omp.test.ts",
     "test:e2e:real": "PIRC_REAL_MODEL_SMOKE=1 node tests/e2e/run.mjs",
     "control": "node scripts/control.mjs",
     "test:flutter:e2e": "node tests/e2e/flutter.mjs",
     "test:creation:e2e": "node tests/e2e/creation.mjs",
     "test:directories": "cargo build -p pirc-server && node --test tests/e2e/directories.test.ts",
-    "test:flutter:encrypted": "node tests/e2e/encrypted-mobile.mjs"
+    "test:flutter:encrypted": "node tests/e2e/encrypted-mobile.mjs",
+    "test:omp:e2e": "cargo build -p pirc-server && node tests/e2e/omp.mjs",
+    "test:flutter:omp": "cargo build -p pirc-server && PIRC_OMP_FLUTTER=1 node tests/e2e/omp.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",

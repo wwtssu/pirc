@@ -1,6 +1,6 @@
 # PiRC
 
-PiRC is a remote client for coding agents, with support for multiple devices, streaming sessions, session controls, and history restoration.
+PiRC is a remote client for Pi and Oh My Pi (OMP), with support for multiple devices, streaming sessions, session controls, and history restoration.
 
 <p>
   <img src="docs/images/client-sessions-en.png" alt="PiRC session list in English" width="280">
@@ -13,7 +13,7 @@ PiRC is a remote client for coding agents, with support for multiple devices, st
 | --- | --- |
 | `apps/client` | Client application and user interaction |
 | `apps/server` | Device-side services and administration |
-| `extensions/pi` | Pi integration |
+| `extensions` | Agent integrations and adapters |
 | `packages/protocol` | Shared communication contracts |
 | `packages/core` | Shared client logic |
 | `packages/crypto` | Shared cryptographic support |
@@ -22,7 +22,7 @@ Agents run on the device. An adapter registers sessions with the server and forw
 
 ## Starting the server
 
-Requires Git, Rust, Node.js, npm, and Pi. Headless Linux devices also require tmux.
+Requires Git, Rust, Node.js, npm, and Pi or OMP. Headless Linux devices also require tmux.
 
 For a fresh checkout, copy and run the entire block:
 
@@ -38,7 +38,7 @@ The server runs in the foreground and listens on `0.0.0.0:43123` by default. Use
 
 After the initial installation, run `pirc server` directly. Keep the checkout: the server loads its adapter and helper scripts from it.
 
-To start an agent manually, set the adapter path from the repository root, then switch to the working directory:
+To start Pi manually, set the adapter path from the repository root, then switch to the working directory:
 
 ```sh
 extension_path="$PWD/extensions/pi/index.ts"
@@ -48,7 +48,9 @@ pi --extension "$extension_path"
 
 Enter the device IP, hostname, or service address in the client. For the first connection, open another terminal on the server device and run the `pirc allow XXXX-XXXX` command shown in the app. Use `pirc waitlist` to list connections awaiting approval.
 
-See [Server](apps/server/README.md), [Pi adapter](extensions/pi/README.md), and [Encryption and authorization](docs/ENCRYPTION.md) for configuration details.
+For OMP, use `extensions/omp/index.ts` with `omp --extension` instead.
+
+See [Server](apps/server/README.md), [Pi adapter](extensions/pi/README.md), [OMP adapter](extensions/omp/README.md), and [Encryption and authorization](docs/ENCRYPTION.md) for configuration details.
 
 ## Client development
 

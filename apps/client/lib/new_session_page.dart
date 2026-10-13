@@ -25,6 +25,7 @@ class _NewSessionPageState extends State<NewSessionPage> {
   List<AgentInfo> agents = [];
   String? agentId;
   bool loading = true;
+  bool catalogReady = false;
   bool launching = false;
   String? error;
 
@@ -58,6 +59,7 @@ class _NewSessionPageState extends State<NewSessionPage> {
       setState(() {
         sessions = catalog.sessions;
         agents = catalog.agents;
+        catalogReady = true;
         if (!agents.any((a) => a.id == agentId)) {
           agentId = agents.isEmpty ? null : agents.first.id;
         }
@@ -298,191 +300,234 @@ class _NewSessionPageState extends State<NewSessionPage> {
           ),
           body: SafeArea(
             top: false,
-            child: CustomScrollView(
-              slivers: [
-                SliverPadding(
-                  padding: const EdgeInsets.all(PircSpacing.s20),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Text(
-                          context.l10n.workingDirectory,
-                          style: context.pircText.hint,
-                        ),
-                        const SizedBox(height: PircSpacing.s10),
-                        TextField(
-                          key: const Key('new-session-cwd'),
-                          controller: cwd,
-                          enabled: !launching,
-                          decoration: InputDecoration(
-                            hintText: '/path/to/project',
-                            prefixIcon: const Icon(LucideIcons.folder),
-                            suffixIcon: IconButton(
-                              key: const Key('browse-remote-directory'),
-                              tooltip: context.l10n.browseDeviceDirectories,
-                              color: context.pircColors.primary,
-                              onPressed: enabled ? browse : null,
-                              icon: const Icon(
-                                LucideIcons.folderOpen,
-                                size: PircIconSizes.toolbar,
-                              ),
-                            ),
-                          ),
-                          textInputAction: TextInputAction.done,
-                          onChanged: (_) => setState(() {}),
-                          onSubmitted: (_) => launch(),
-                        ),
-                        const SizedBox(height: PircSpacing.s12),
-                        FilledButton.icon(
-                          key: const Key('launch-new-session'),
-                          onPressed:
-                              enabled &&
-                                  agentId != null &&
-                                  cwd.text.trim().isNotEmpty
-                              ? () => launch()
-                              : null,
-                          icon: const Icon(
-                            LucideIcons.plus,
-                            size: PircIconSizes.small,
-                          ),
-                          label: Text(context.l10n.createConversation),
-                        ),
-                        if (error != null) ...[
-                          const SizedBox(height: PircSpacing.s12),
-                          Text(
-                            context.localize(error!),
-                            key: const Key('new-session-error'),
-                            style: context.pircText.hint.copyWith(
-                              color: context.pirc.warning,
-                            ),
-                          ),
-                        ],
-                        const SizedBox(height: PircSpacing.s28),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                context.l10n.restoreHistory,
-                                style: context.pircText.section,
-                              ),
-                            ),
-                            IconButton(
-                              key: const Key('refresh-saved-sessions'),
-                              tooltip: context.l10n.refreshHistory,
-                              onPressed: loading || !enabled ? null : load,
-                              icon: const Icon(
-                                LucideIcons.refreshCw,
-                                size: PircIconSizes.chevron,
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (agents.length > 1) ...[
-                          Wrap(
-                            spacing: PircSpacing.s8,
-                            runSpacing: PircSpacing.s8,
-                            children: [
-                              for (final agent in agents)
-                                ChoiceChip(
-                                  key: ValueKey('agent-${agent.id}'),
-                                  label: Text(
-                                    agent.name,
-                                    style: context.pircText.description
-                                        .copyWith(
-                                          color: agent.id == agentId
-                                              ? context.pircColors.primary
-                                              : context.pircColors.onSurface,
-                                        ),
-                                  ),
-                                  selected: agent.id == agentId,
-                                  showCheckmark: false,
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: PircSpacing.s4,
-                                  ),
-                                  labelPadding: const EdgeInsets.symmetric(
-                                    horizontal: PircSpacing.s12,
-                                  ),
-                                  visualDensity: VisualDensity.compact,
-                                  materialTapTargetSize:
-                                      MaterialTapTargetSize.shrinkWrap,
-                                  selectedColor:
-                                      context.pircColors.primaryContainer,
-                                  backgroundColor: context.pircColors.surface,
-                                  side: BorderSide(
-                                    color: agent.id == agentId
-                                        ? context.pircColors.primary
-                                        : context.pircColors.outlineVariant,
-                                  ),
-                                  shape: const StadiumBorder(),
-                                  onSelected: enabled
-                                      ? (_) =>
-                                            setState(() => agentId = agent.id)
-                                      : null,
-                                ),
-                            ],
-                          ),
-                          const SizedBox(height: PircSpacing.s12),
-                        ],
-                        TextField(
-                          key: const Key('saved-session-search'),
-                          controller: search,
-                          decoration: InputDecoration(
-                            hintText: context.l10n.searchHistory,
-                            prefixIcon: Icon(LucideIcons.search),
-                          ),
-                          onChanged: (_) => setState(() {}),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                if (loading)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: EdgeInsets.all(PircSpacing.s24),
-                      child: PircLoading(
-                        title: context.l10n.loadingHistory,
-                        detail: context.l10n.readingSavedConversations,
-                      ),
-                    ),
-                  )
-                else if (saved.isEmpty)
-                  SliverToBoxAdapter(
+            child: !catalogReady
+                ? Center(
                     child: Padding(
                       padding: const EdgeInsets.all(PircSpacing.s24),
-                      child: Center(
-                        child: Text(
-                          error != null
-                              ? context.l10n.historyLoadFailed
-                              : query.isNotEmpty
-                              ? context.l10n.noMatchingHistory
-                              : context.l10n.noSavedHistory,
-                          style: context.pircText.hint,
-                        ),
-                      ),
+                      child: loading
+                          ? PircLoading(
+                              key: const Key('new-session-loading'),
+                              title: context.l10n.loadingHistory,
+                            )
+                          : Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  context.localize(error ?? ''),
+                                  key: const Key('new-session-error'),
+                                  textAlign: TextAlign.center,
+                                  style: context.pircText.hint.copyWith(
+                                    color: context.pirc.warning,
+                                  ),
+                                ),
+                                const SizedBox(height: PircSpacing.s16),
+                                TextButton.icon(
+                                  key: const Key('refresh-saved-sessions'),
+                                  onPressed: enabled ? load : null,
+                                  icon: const Icon(LucideIcons.refreshCw),
+                                  label: Text(context.l10n.retry),
+                                ),
+                              ],
+                            ),
                     ),
                   )
-                else
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(
-                      PircSpacing.s20,
-                      0,
-                      PircSpacing.s20,
-                      PircSpacing.s24,
-                    ),
-                    sliver: SliverList.separated(
-                      itemCount: saved.length,
-                      separatorBuilder: (_, _) =>
-                          const SizedBox(height: PircSpacing.s10),
-                      itemBuilder: (_, index) => _SavedSessionTile(
-                        session: saved[index],
-                        onTap: enabled ? () => launch(saved[index]) : null,
+                : CustomScrollView(
+                    slivers: [
+                      SliverPadding(
+                        padding: const EdgeInsets.all(PircSpacing.s20),
+                        sliver: SliverToBoxAdapter(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(
+                                context.l10n.workingDirectory,
+                                style: context.pircText.hint,
+                              ),
+                              const SizedBox(height: PircSpacing.s10),
+                              TextField(
+                                key: const Key('new-session-cwd'),
+                                controller: cwd,
+                                enabled: !launching,
+                                decoration: InputDecoration(
+                                  hintText: '/path/to/project',
+                                  prefixIcon: const Icon(LucideIcons.folder),
+                                  suffixIcon: IconButton(
+                                    key: const Key('browse-remote-directory'),
+                                    tooltip:
+                                        context.l10n.browseDeviceDirectories,
+                                    color: context.pircColors.primary,
+                                    onPressed: enabled ? browse : null,
+                                    icon: const Icon(
+                                      LucideIcons.folderOpen,
+                                      size: PircIconSizes.toolbar,
+                                    ),
+                                  ),
+                                ),
+                                textInputAction: TextInputAction.done,
+                                onChanged: (_) => setState(() {}),
+                                onSubmitted: (_) => launch(),
+                              ),
+                              const SizedBox(height: PircSpacing.s12),
+                              FilledButton.icon(
+                                key: const Key('launch-new-session'),
+                                onPressed:
+                                    enabled &&
+                                        agentId != null &&
+                                        cwd.text.trim().isNotEmpty
+                                    ? () => launch()
+                                    : null,
+                                icon: const Icon(
+                                  LucideIcons.plus,
+                                  size: PircIconSizes.small,
+                                ),
+                                label: Text(context.l10n.createConversation),
+                              ),
+                              if (error != null) ...[
+                                const SizedBox(height: PircSpacing.s12),
+                                Text(
+                                  context.localize(error!),
+                                  key: const Key('new-session-error'),
+                                  style: context.pircText.hint.copyWith(
+                                    color: context.pirc.warning,
+                                  ),
+                                ),
+                              ],
+                              const SizedBox(height: PircSpacing.s28),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      context.l10n.restoreHistory,
+                                      style: context.pircText.section,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    key: const Key('refresh-saved-sessions'),
+                                    tooltip: context.l10n.refreshHistory,
+                                    onPressed: loading || !enabled
+                                        ? null
+                                        : load,
+                                    icon: const Icon(
+                                      LucideIcons.refreshCw,
+                                      size: PircIconSizes.chevron,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (agents.length > 1) ...[
+                                Wrap(
+                                  spacing: PircSpacing.s8,
+                                  runSpacing: PircSpacing.s8,
+                                  children: [
+                                    for (final agent in agents)
+                                      ChoiceChip(
+                                        key: ValueKey('agent-${agent.id}'),
+                                        label: Text(
+                                          agent.name,
+                                          style: context.pircText.description
+                                              .copyWith(
+                                                color: agent.id == agentId
+                                                    ? context.pircColors.primary
+                                                    : context
+                                                          .pircColors
+                                                          .onSurface,
+                                              ),
+                                        ),
+                                        selected: agent.id == agentId,
+                                        showCheckmark: false,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: PircSpacing.s4,
+                                        ),
+                                        labelPadding:
+                                            const EdgeInsets.symmetric(
+                                              horizontal: PircSpacing.s12,
+                                            ),
+                                        visualDensity: VisualDensity.compact,
+                                        materialTapTargetSize:
+                                            MaterialTapTargetSize.shrinkWrap,
+                                        selectedColor:
+                                            context.pircColors.primaryContainer,
+                                        backgroundColor:
+                                            context.pircColors.surface,
+                                        side: BorderSide(
+                                          color: agent.id == agentId
+                                              ? context.pircColors.primary
+                                              : context
+                                                    .pircColors
+                                                    .outlineVariant,
+                                        ),
+                                        shape: const StadiumBorder(),
+                                        onSelected: enabled
+                                            ? (_) => setState(
+                                                () => agentId = agent.id,
+                                              )
+                                            : null,
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: PircSpacing.s12),
+                              ],
+                              TextField(
+                                key: const Key('saved-session-search'),
+                                controller: search,
+                                decoration: InputDecoration(
+                                  hintText: context.l10n.searchHistory,
+                                  prefixIcon: Icon(LucideIcons.search),
+                                ),
+                                onChanged: (_) => setState(() {}),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
+                      if (loading)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: EdgeInsets.all(PircSpacing.s24),
+                            child: PircLoading(
+                              title: context.l10n.loadingHistory,
+                              detail: context.l10n.readingSavedConversations,
+                            ),
+                          ),
+                        )
+                      else if (saved.isEmpty)
+                        SliverToBoxAdapter(
+                          child: Padding(
+                            padding: const EdgeInsets.all(PircSpacing.s24),
+                            child: Center(
+                              child: Text(
+                                error != null
+                                    ? context.l10n.historyLoadFailed
+                                    : query.isNotEmpty
+                                    ? context.l10n.noMatchingHistory
+                                    : context.l10n.noSavedHistory,
+                                style: context.pircText.hint,
+                              ),
+                            ),
+                          ),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(
+                            PircSpacing.s20,
+                            0,
+                            PircSpacing.s20,
+                            PircSpacing.s24,
+                          ),
+                          sliver: SliverList.separated(
+                            itemCount: saved.length,
+                            separatorBuilder: (_, _) =>
+                                const SizedBox(height: PircSpacing.s10),
+                            itemBuilder: (_, index) => _SavedSessionTile(
+                              session: saved[index],
+                              onTap: enabled
+                                  ? () => launch(saved[index])
+                                  : null,
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
-              ],
-            ),
           ),
         ),
       ),

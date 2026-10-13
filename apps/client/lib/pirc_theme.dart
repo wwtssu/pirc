@@ -44,6 +44,7 @@ abstract final class PircSpacing {
 }
 
 abstract final class PircRadii {
+  static const agentBadge = BorderRadius.all(Radius.circular(5));
   static const badge = BorderRadius.all(Radius.circular(8));
   static const brand = BorderRadius.all(Radius.circular(10));
   static const composerAction = BorderRadius.all(Radius.circular(10));
