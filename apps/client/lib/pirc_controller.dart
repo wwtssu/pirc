@@ -28,17 +28,35 @@ String connectionLabel(String state) => switch (state) {
   _ => 'No device connected',
 };
 
+class AskDraft extends ValueNotifier<Map<String, dynamic>> {
+  AskDraft() : super({});
+  bool closed = false;
+  @override
+  set value(Map<String, dynamic> next) {
+    if (!closed) super.value = next;
+  }
+
+  @override
+  void dispose() {
+    closed = true;
+    super.dispose();
+  }
+}
+
 class SessionView {
   SessionView(Map<String, dynamic> json)
     : snapshot = json['snapshot'] as Map<String, dynamic>,
       ready = json['ready'] as bool,
       lastSeq = json['last_seq'] as int? ?? 0,
+      snapshotTodo = (json['current_todo'] as Map?)?.cast<String, dynamic>(),
       items = (json['items'] as List).cast<Map<String, dynamic>>(),
       gaps = (json['gaps'] as List).cast<String>(),
       history = (json['history'] as Map<String, dynamic>?) ?? {};
   final Map<String, dynamic> snapshot;
   final bool ready;
   final int lastSeq;
+  List? get todo => (snapshotTodo?['todo'] as List?);
+  final Map<String, dynamic>? snapshotTodo;
   final List<Map<String, dynamic>> items;
   final List<String> gaps;
   final Map<String, dynamic> history;
@@ -172,6 +190,9 @@ class PircController extends ChangeNotifier {
       sessions.where((s) => s.state != 'offline').toList();
   List<Map<String, dynamic>> commands = [];
   final Map<String, String> _drafts = {};
+  final Map<String, AskDraft> _askDrafts = {};
+  AskDraft askDraft(SessionView session, String promptId) =>
+      _askDrafts.putIfAbsent('${session.instance}:$promptId', () => AskDraft());
   final Set<String> _cleared = {};
   final Set<String> _dirty = {};
   final Map<String, (String, int?)> _historyRequests = {};
@@ -225,6 +246,31 @@ class PircController extends ChangeNotifier {
           .toList(),
       defaultCwd: data['default_cwd'] as String,
     );
+  }
+
+  Future<void> answerAsk(
+    SessionView session,
+    String promptId,
+    List<Map<String, dynamic>> answers,
+  ) async {
+    final client = _client;
+    if (client == null || connection != 'connected') {
+      throw StateError('Device disconnected. Reconnect and try again.');
+    }
+    final result = jsonDecode(
+      await bridge.answerAsk(
+        client: client,
+        instanceId: session.instance,
+        promptId: promptId,
+        answersJson: jsonEncode(answers),
+      ),
+    ) as Map<String, dynamic>;
+    if (result['status'] != 'completed') {
+      throw StateError(
+        result['detail'] as String? ??
+            'This question is no longer waiting for an answer.',
+      );
+    }
   }
 
   Future<String> createDirectory(String parent, String name) async {
@@ -861,6 +907,9 @@ class PircController extends ChangeNotifier {
 
   @override
   void dispose() {
+    for (final draft in _askDrafts.values) {
+      draft.dispose();
+    }
     ++_epoch;
     _save?.cancel();
     unawaited(flushDrafts());

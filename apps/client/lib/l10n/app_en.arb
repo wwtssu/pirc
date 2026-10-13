@@ -479,5 +479,17 @@
   "attachmentFile": "File",
   "removeAttachment": "Remove attachment",
   "fileSelectionFailed": "Unable to select or upload the file",
-  "fileTooLarge": "Files must be 20 MB or smaller"
+  "fileTooLarge": "Files must be 20 MB or smaller",
+  "answerQuestions": "Answer questions",
+  "submitAnswers": "Submit answers",
+  "customAnswer": "Your own answer",
+  "answerNote": "Additional note",
+  "chooseAnswer": "Choose an option or enter an answer for each question.",
+  "answerExpired": "This question is no longer waiting for an answer.",
+  "answerTimedOut": "Answer submission timed out",
+  "todoTitle": "Tasks",
+  "todoPending": "Pending",
+  "todoInProgress": "In progress",
+  "todoBlocked": "Blocked",
+  "todoAbandoned": "Abandoned"
 }

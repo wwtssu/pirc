@@ -89,6 +89,9 @@ abstract final class PircLayout {
   static const statusDotSize = 6.0;
   static const statusBadgeWidthFactor = .45;
   static const activityMaxHeight = 240.0;
+  static const taskTreeHeightFactor = .28;
+  // Reserve room for the composer, notices, task summary and visible chat.
+  static const taskPanelReservedHeight = 320.0;
   static const userBubbleWidthFactor = .86;
   static const borderWidth = 1.0;
   static const focusBorderWidth = 1.5;

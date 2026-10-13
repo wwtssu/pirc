@@ -370,5 +370,17 @@
   "attachmentFile": "文件",
   "removeAttachment": "移除附件",
   "fileSelectionFailed": "无法选择或上传文件",
-  "fileTooLarge": "文件不能超过 20 MB"
+  "fileTooLarge": "文件不能超过 20 MB",
+  "answerQuestions": "回答问题",
+  "submitAnswers": "提交回答",
+  "customAnswer": "自定义回答",
+  "answerNote": "补充说明",
+  "chooseAnswer": "请为每个问题选择选项或填写回答。",
+  "answerExpired": "该问题已结束，无需继续回答。",
+  "answerTimedOut": "提交回答超时",
+  "todoTitle": "任务",
+  "todoPending": "待处理",
+  "todoInProgress": "进行中",
+  "todoBlocked": "受阻",
+  "todoAbandoned": "已放弃"
 }

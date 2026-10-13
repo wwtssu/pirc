@@ -272,3 +272,103 @@ test("OMP normalizes terminal settle, approvals, session switches and subagent i
     else process.env.PIRC_URL = previousURL;
   }
 });
+
+test("Ask keeps the native dialog and accepts one validated remote answer", async () => {
+  const { AskBridge } = await import("../../extensions/omp/interaction.ts");
+  let shown: any;
+  let localResolve!: (result: any) => void;
+  let nativeAborted = false;
+  const bridge = new AskBridge((request) => {
+    shown = request;
+  });
+  const ctx: any = {
+    agent: { kind: "main" },
+    ui: {
+      askDialog: (_q: any, options: any) =>
+        new Promise((resolve) => {
+          localResolve = resolve;
+          options.signal.addEventListener(
+            "abort",
+            () => {
+              nativeAborted = true;
+              resolve(undefined);
+            },
+            { once: true },
+          );
+        }),
+    },
+  };
+  bridge.install(ctx);
+  bridge.install(ctx);
+  const questions = [
+    {
+      id: "q",
+      question: "Choose",
+      options: [{ label: "A" }, { label: "B" }],
+      multi: true,
+    },
+  ];
+  const outcome = ctx.ui.askDialog(questions, {});
+  assert(shown);
+  assert.throws(
+    () =>
+      bridge.answer(shown.id, [
+        { id: "q", selected: [8], text: null, note: null },
+      ]),
+    /Choose/,
+  );
+  const id = shown.id;
+  bridge.answer(id, [
+    { id: "q", selected: [0, 1], text: "Custom", note: "Note" },
+  ]);
+  assert.throws(() => bridge.answer(id, []), /no longer/);
+  const result = await outcome;
+  assert.deepEqual(result.results[0].selectedOptions, ["A", "B"]);
+  assert.equal(result.results[0].customInput, "Custom");
+  assert(nativeAborted);
+  assert.equal(shown, undefined);
+  const local = ctx.ui.askDialog(questions, {});
+  const previousId = (shown as any).id;
+  localResolve({ kind: "submit", results: [] });
+  assert.equal((await local).kind, "submit");
+  assert.equal(shown, undefined);
+  assert.throws(() => bridge.answer(previousId, []), /no longer/);
+  const cancelled = ctx.ui.askDialog(questions, {});
+  bridge.cancel();
+  assert.equal(await cancelled, undefined);
+  assert.equal(shown, undefined);
+});
+
+test("Todo metadata preserves every native task state and rejects malformed details", async () => {
+  const { todoData } = await import("../../extensions/omp/interaction.ts");
+  const phases = [
+    {
+      name: "Build",
+      tasks: [
+        "pending",
+        "in_progress",
+        "completed",
+        "abandoned",
+        "blocked",
+      ].map((status) => ({
+        content: status,
+        status,
+        ...(status === "blocked" ? { blocker: "Waiting for input" } : {}),
+      })),
+    },
+  ];
+  const data = todoData("todo", { details: { phases } });
+  assert.equal(data.todo?.[0]?.tasks.length, 5);
+  assert.equal(data.todo?.[0]?.tasks[4]?.blocker, "Waiting for input");
+  assert.deepEqual(todoData("other", { details: { phases } }), {});
+  assert.deepEqual(
+    todoData("todo", {
+      details: {
+        phases: [
+          { name: "Bad", tasks: [{ content: "Bad", status: "invalid" }] },
+        ],
+      },
+    }),
+    {},
+  );
+});

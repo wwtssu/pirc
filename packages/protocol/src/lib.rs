@@ -129,6 +129,62 @@ pub enum CommandData {
 pub struct UiPrompt {
     pub kind: String,
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ask: Option<AskRequest>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AskOption {
+    pub label: String,
+    pub description: Option<String>,
+    pub preview: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AskQuestion {
+    pub id: String,
+    pub question: String,
+    pub header: Option<String>,
+    pub options: Vec<AskOption>,
+    pub multi: bool,
+    pub recommended: Option<u32>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AskRequest {
+    pub id: String,
+    pub questions: Vec<AskQuestion>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct AskAnswer {
+    pub id: String,
+    pub selected: Vec<u32>,
+    pub text: Option<String>,
+    pub note: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(rename_all = "snake_case")]
+pub enum TodoStatus {
+    Pending,
+    InProgress,
+    Completed,
+    Abandoned,
+    Blocked,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct TodoTask {
+    pub content: String,
+    pub status: TodoStatus,
+    pub blocker: Option<String>,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
+pub struct TodoPhase {
+    pub name: String,
+    pub tasks: Vec<TodoTask>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
@@ -235,6 +291,8 @@ pub struct ImageRef {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct EventData {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub todo: Option<Vec<TodoPhase>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<ImageRef>,
     pub kind: EventKind,
@@ -252,6 +310,8 @@ pub struct EventData {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
 pub struct TranscriptItem {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub todo: Option<Vec<TodoPhase>>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub images: Vec<ImageRef>,
     pub id: String,
@@ -407,6 +467,9 @@ pub enum Message {
         session_id: String,
         instance_id: String,
         items: Vec<TranscriptItem>,
+        /// Current task state, independent of the requested history range.
+        #[serde(default)]
+        current_todo: Option<TranscriptItem>,
         has_before: bool,
         has_after: bool,
         #[ts(type = "number")]
@@ -434,6 +497,13 @@ pub enum Message {
         generation_id: String,
         session_id: String,
         instance_id: String,
+    },
+    AnswerAsk {
+        generation_id: String,
+        session_id: String,
+        instance_id: String,
+        prompt_id: String,
+        answers: Vec<AskAnswer>,
     },
     CloseSession {
         generation_id: String,
@@ -532,12 +602,14 @@ impl Envelope {
                 last_seq,
                 source_seq,
                 items,
+                current_todo,
                 ..
             } => {
                 *last_seq <= MAX_SAFE_INTEGER
                     && *source_seq <= MAX_SAFE_INTEGER
                     && items
                         .iter()
+                        .chain(current_todo.iter())
                         .all(|i| i.first_seq <= MAX_SAFE_INTEGER && i.last_seq <= MAX_SAFE_INTEGER)
             }
             Message::Prompt {

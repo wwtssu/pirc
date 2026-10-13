@@ -47,6 +47,7 @@ async fn event(app: &App, tx: &Sender, seq: u64, kind: EventKind, text: &str, in
             source_seq: seq,
             seq: 0,
             event: EventData {
+                todo: None,
                 images: vec![],
                 kind: kind.clone(),
                 message_id: Some("m".into()),
@@ -218,4 +219,38 @@ async fn large_pages_fit_frame_limit_and_keep_around_target() {
             assert!(items.iter().any(|i| i.first_seq == 10));
         }
     }
+}
+
+#[tokio::test]
+async fn current_tasks_are_supplied_outside_the_requested_history_window() {
+    let (app, tx) = fixture().await;
+    event(&app, &tx, 1, EventKind::UserMessage, "older", None).await;
+    event(&app, &tx, 2, EventKind::UserMessage, "latest", None).await;
+    {
+        let mut registry = app.inner.lock().await;
+        let live = registry.sessions.get_mut("i").unwrap();
+        let task = &mut live.transcript.items[0];
+        task.todo = Some(vec![TodoPhase {
+            name: "Build".into(),
+            tasks: vec![TodoTask {
+                content: "Current task".into(),
+                status: TodoStatus::InProgress,
+                blocker: None,
+            }],
+        }]);
+    }
+    let Message::HistoryPage {
+        items,
+        current_todo,
+        ..
+    } = page(&app, HistoryDirection::Latest, None, 1).await
+    else {
+        panic!("not a page")
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].first_seq, 2);
+    assert_eq!(
+        current_todo.unwrap().todo.unwrap()[0].tasks[0].content,
+        "Current task"
+    );
 }

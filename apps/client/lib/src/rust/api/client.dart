@@ -40,6 +40,18 @@ Future<String> sendPrompt({
 Future<String> savedSessions({required PircClient client}) =>
     RustLib.instance.api.crateApiClientSavedSessions(client: client);
 
+Future<String> answerAsk({
+  required PircClient client,
+  required String instanceId,
+  required String promptId,
+  required String answersJson,
+}) => RustLib.instance.api.crateApiClientAnswerAsk(
+  client: client,
+  instanceId: instanceId,
+  promptId: promptId,
+  answersJson: answersJson,
+);
+
 Future<String> browseDirectories({
   required PircClient client,
   String? path,

@@ -65,7 +65,7 @@ writeFileSync(
 );
 writeFileSync(
   join(agent, "config.yml"),
-  "compaction:\n  enabled: false\n  methodOrder: [soft]\n  keepRecentTokens: 100\n  reserveTokens: 100\nretry:\n  enabled: false\n",
+  "startup:\n  setupWizard: false\n  checkUpdate: false\ncompaction:\n  enabled: false\n  methodOrder: [soft]\n  keepRecentTokens: 100\n  reserveTokens: 100\nretry:\n  enabled: false\n",
 );
 const reservation = createServer();
 await new Promise((r) => reservation.listen(0, "127.0.0.1", r));
@@ -295,7 +295,117 @@ try {
     "native Todo output",
   );
   await idle(iid);
-  note("native Todo appears as existing tool blocks");
+  assert(
+    events(at).some((e) =>
+      e.todo?.some((p) => p.tasks.some((t) => t.status === "in_progress")),
+    ),
+  );
+  assert(
+    events(at).some((e) =>
+      e.todo?.some((p) => p.tasks.some((t) => t.status === "completed")),
+    ),
+  );
+  note("native Todo emits structured phases and task states");
+  s = await idle(iid);
+  at = await prompt(s, "ASK");
+  s = await wait(() => {
+    const v = snapshots.get(iid);
+    return v?.ui_prompt?.ask && v;
+  }, "native Ask dialog");
+  const askRequest = s.ui_prompt.ask;
+  assert.equal(askRequest.questions.length, 2);
+  const invalidAnswer = await request({
+    type: "answer_ask",
+    generation_id: generation,
+    session_id: s.session_id,
+    instance_id: iid,
+    prompt_id: askRequest.id,
+    answers: [],
+  });
+  assert.equal(invalidAnswer.status, "rejected");
+  const answer = await request({
+    type: "answer_ask",
+    generation_id: generation,
+    session_id: s.session_id,
+    instance_id: iid,
+    prompt_id: askRequest.id,
+    answers: [
+      { id: "color", selected: [1], text: null, note: "From App" },
+      {
+        id: "features",
+        selected: [0, 1],
+        text: "Also support custom text",
+        note: null,
+      },
+    ],
+  });
+  assert.equal(answer.status, "completed");
+  await idle(iid);
+  assert(
+    events(at).some(
+      (e) =>
+        e.kind === "tool_end" &&
+        e.tool_name === "ask" &&
+        e.text.includes("Blue") &&
+        e.text.includes("Also support custom text"),
+    ),
+  );
+  const stale = await request({
+    type: "answer_ask",
+    generation_id: generation,
+    session_id: s.session_id,
+    instance_id: iid,
+    prompt_id: askRequest.id,
+    answers: [],
+  });
+  assert.equal(stale.code, "STALE_PROMPT");
+  note(
+    "native Ask accepts single/multiple/custom answers and rejects stale replies",
+  );
+  s = await idle(iid);
+  at = await prompt(s, "ASK_LOCAL");
+  await wait(() => snapshots.get(iid)?.ui_prompt?.ask, "local Ask dialog");
+  const nativeTerminal = await wait(
+    () =>
+      tmux("list-panes", "-a", "-F", "#{pane_id}")
+        .trim()
+        .split("\n")
+        .find((pane) =>
+          tmux("capture-pane", "-p", "-t", pane).includes("Choose a color"),
+        ),
+    "native Ask visible in terminal",
+  );
+  tmux("send-keys", "-t", nativeTerminal, "Enter");
+  await idle(iid);
+  assert(!snapshots.get(iid).ui_prompt?.ask);
+  assert(
+    events(at).some(
+      (e) =>
+        e.kind === "tool_end" &&
+        e.tool_name === "ask" &&
+        e.text.includes("Blue"),
+    ),
+  );
+  note("answering native terminal Ask dismisses the remote request");
+  s = await idle(iid);
+  await prompt(s, "ASK");
+  await wait(() => snapshots.get(iid)?.ui_prompt?.ask, "Ask to stop");
+  const askStop = send({
+    type: "stop",
+    generation_id: generation,
+    session_id: s.session_id,
+    instance_id: iid,
+  });
+  await wait(
+    () =>
+      frames.some(
+        (f) => f.request_id === askStop && f.message.status === "completed",
+      ),
+    "Stop pending Ask",
+  );
+  await idle(iid);
+  assert(!snapshots.get(iid).ui_prompt?.ask);
+  note("Stop cancels both Ask surfaces and confirms idle");
   s = await idle(iid);
   at = await prompt(s, "IMAGE", [
     {
@@ -404,7 +514,14 @@ try {
   });
   assert.equal(page.type, "history_page", JSON.stringify(page));
   assert(page.items.some((i) => i.images?.length));
-  note("resume restores history, name and images into App blocks");
+  assert.equal(page.items.filter((i) => i.todo).length, 1);
+  assert(page.items.find((i) => i.todo).id.startsWith("todo:"));
+  assert(
+    page.items.some((i) =>
+      i.todo?.some((p) => p.tasks.some((t) => t.status === "completed")),
+    ),
+  );
+  note("resume restores history, name, images and structured Todo blocks");
   result = await builtin(s, "compact", "Preserve the fixture result");
   assert.equal(result.status, "completed");
   assert(result.data.summary.length > 0);

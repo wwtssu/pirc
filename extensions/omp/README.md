@@ -34,9 +34,14 @@ Connection configuration follows the same loopback settings as the Pi adapter.
   file paths included with the prompt.
 - History pagination, reconnect, and reconstruction after server restarts.
 
-OMP's native Todo results use the existing tool blocks. Tool approvals and Ask
-prompts report that local attention is required; they remain interactive in the
-terminal. Other custom TUI components retain their textual output. The adapter
+OMP's native Todo results update one stable task panel per session. Phases and
+their tasks render as a tree with progress counts, task states, and blockers,
+including restored history. The panel stays above the composer while the user
+reads older messages. Updates retain its expansion state. Ask questions can be answered in the App
+with single or multiple selections, custom text, and notes. The native terminal
+dialog remains available: the first submitted answer completes the request and
+closes the other surface. Native cancellation and timeout behavior is preserved.
+Tool approvals still require local attention in the device terminal. Other custom TUI components retain their textual output. The adapter
 registers only the main session, preventing task subagents from appearing as
 independent remotely controlled sessions.
 

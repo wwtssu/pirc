@@ -16,6 +16,123 @@
       ],
       "type": "object"
     },
+    "AskAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "note": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "selected": {
+          "items": {
+            "format": "uint32",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "text": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "selected"
+      ],
+      "type": "object"
+    },
+    "AskOption": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "label": {
+          "type": "string"
+        },
+        "preview": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "label"
+      ],
+      "type": "object"
+    },
+    "AskQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "header": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "multi": {
+          "type": "boolean"
+        },
+        "options": {
+          "items": {
+            "$ref": "#/$defs/AskOption"
+          },
+          "type": "array"
+        },
+        "question": {
+          "type": "string"
+        },
+        "recommended": {
+          "format": "uint32",
+          "minimum": 0,
+          "type": [
+            "integer",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "question",
+        "options",
+        "multi"
+      ],
+      "type": "object"
+    },
+    "AskRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/AskQuestion"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "questions"
+      ],
+      "type": "object"
+    },
     "BuiltinCommand": {
       "enum": [
         "model",
@@ -238,6 +355,15 @@
         "text": {
           "type": [
             "string",
+            "null"
+          ]
+        },
+        "todo": {
+          "items": {
+            "$ref": "#/$defs/TodoPhase"
+          },
+          "type": [
+            "array",
             "null"
           ]
         },
@@ -993,6 +1119,18 @@
         {
           "additionalProperties": false,
           "properties": {
+            "current_todo": {
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/TranscriptItem"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "Current task state, independent of the requested history range."
+            },
             "has_after": {
               "type": "boolean"
             },
@@ -1131,6 +1269,42 @@
             "generation_id",
             "session_id",
             "instance_id"
+          ],
+          "type": "object"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "answers": {
+              "items": {
+                "$ref": "#/$defs/AskAnswer"
+              },
+              "type": "array"
+            },
+            "generation_id": {
+              "type": "string"
+            },
+            "instance_id": {
+              "type": "string"
+            },
+            "prompt_id": {
+              "type": "string"
+            },
+            "session_id": {
+              "type": "string"
+            },
+            "type": {
+              "const": "answer_ask",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "generation_id",
+            "session_id",
+            "instance_id",
+            "prompt_id",
+            "answers"
           ],
           "type": "object"
         },
@@ -1661,6 +1835,57 @@
       ],
       "type": "object"
     },
+    "TodoPhase": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "tasks": {
+          "items": {
+            "$ref": "#/$defs/TodoTask"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "name",
+        "tasks"
+      ],
+      "type": "object"
+    },
+    "TodoStatus": {
+      "enum": [
+        "pending",
+        "in_progress",
+        "completed",
+        "abandoned",
+        "blocked"
+      ],
+      "type": "string"
+    },
+    "TodoTask": {
+      "additionalProperties": false,
+      "properties": {
+        "blocker": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "content": {
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/TodoStatus"
+        }
+      },
+      "required": [
+        "content",
+        "status"
+      ],
+      "type": "object"
+    },
     "TranscriptItem": {
       "additionalProperties": false,
       "description": "A materialized content block. Pages never split its stream of deltas.",
@@ -1730,6 +1955,15 @@
             "null"
           ]
         },
+        "todo": {
+          "items": {
+            "$ref": "#/$defs/TodoPhase"
+          },
+          "type": [
+            "array",
+            "null"
+          ]
+        },
         "tool_call_id": {
           "type": [
             "string",
@@ -1755,6 +1989,16 @@
     "UiPrompt": {
       "additionalProperties": false,
       "properties": {
+        "ask": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AskRequest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "kind": {
           "type": "string"
         },

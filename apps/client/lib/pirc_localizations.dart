@@ -27,6 +27,10 @@ extension PircLocalization on BuildContext {
     final coded = RegExp(r'^([A-Z][A-Z_]+): (.+)$').firstMatch(message);
     if (coded != null) return '${coded.group(1)}: ${localize(coded.group(2)!)}';
     return switch (message) {
+      'This question is no longer waiting for an answer.' => l10n.answerExpired,
+      'Answer submission timed out' => l10n.answerTimedOut,
+      'Choose an option or enter an answer for each question.' =>
+        l10n.chooseAnswer,
       "Unable to read saved devices. Add them again." =>
         l10n.savedDevicesUnreadable,
       "Duplicate connection address" => l10n.duplicateConnectionAddress,

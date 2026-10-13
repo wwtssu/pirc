@@ -47,6 +47,21 @@ pub async fn send_prompt(
 pub async fn saved_sessions(client: &PircClient) -> Result<String, String> {
     serde_json::to_string(&client.inner.saved_sessions().await?).map_err(|e| e.to_string())
 }
+pub async fn answer_ask(
+    client: &PircClient,
+    instance_id: String,
+    prompt_id: String,
+    answers_json: String,
+) -> Result<String, String> {
+    let answers = serde_json::from_str(&answers_json).map_err(|e| e.to_string())?;
+    serde_json::to_string(
+        &client
+            .inner
+            .answer_ask(instance_id, prompt_id, answers)
+            .await?,
+    )
+    .map_err(|e| e.to_string())
+}
 pub async fn browse_directories(
     client: &PircClient,
     path: Option<String>,

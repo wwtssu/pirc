@@ -113,6 +113,50 @@ Future<void> close(WidgetTester tester, PagedController model) async {
 
 void main() {
   testWidgets(
+    'task dock overlaps transcript painting but leaves latest message and jump control clear',
+    (tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      final state = data(items(0, 30));
+      state['sessions'][0]['current_todo'] = {
+        'todo': [
+          {
+            'name': 'Build',
+            'tasks': [
+              {'content': 'Current task', 'status': 'in_progress'},
+            ],
+          },
+        ],
+      };
+      final model = PagedController()..applyDecodedView(state);
+      await open(tester, model);
+      await tester.pumpAndSettle();
+      final dock = tester.getRect(
+        find.byKey(const Key('persistent-todo-panel')),
+      );
+      final viewport = tester.getRect(find.byKey(const Key('transcript')));
+      expect(viewport.bottom, greaterThan(dock.top));
+      final last = tester.getRect(find.byKey(const ValueKey<dynamic>('h29')));
+      expect(last.bottom, lessThanOrEqualTo(dock.top));
+      position(tester).jumpTo(-300);
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byKey(const Key('jump-to-latest'))).bottom,
+        lessThan(dock.top),
+      );
+      await tester.tap(find.byKey(const Key('jump-to-latest')));
+      await tester.pumpAndSettle();
+      expect(
+        tester.getRect(find.byKey(const ValueKey<dynamic>('h29'))).bottom,
+        lessThanOrEqualTo(dock.top),
+      );
+      expect(tester.takeException(), isNull);
+      await close(tester, model);
+    },
+  );
+  testWidgets(
     'streaming during inertia has the same reading motion as scrolling alone',
     (tester) async {
       tester.view.physicalSize = const Size(390, 844);

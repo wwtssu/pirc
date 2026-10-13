@@ -29,6 +29,7 @@ pub struct SessionView {
     pub ready: bool,
     pub last_seq: u64,
     pub items: Vec<Item>,
+    pub current_todo: Option<Item>,
     pub gaps: Vec<String>,
     pub history: HistoryView,
     #[serde(skip)]
@@ -231,6 +232,7 @@ impl Projection {
                 last_seq: 0,
                 source_seq: 0,
                 items: vec![],
+                current_todo: None,
                 gaps: vec![],
                 history: HistoryView {
                     enabled: self.history_paging,
@@ -360,6 +362,7 @@ impl Projection {
                 session_id,
                 instance_id,
                 items,
+                current_todo,
                 has_before,
                 has_after,
                 last_seq,
@@ -374,6 +377,17 @@ impl Projection {
                     if let Some(s) = self.view.sessions.iter_mut().find(|s| {
                         s.snapshot.instance_id == instance_id && s.snapshot.session_id == session_id
                     }) {
+                        for item in current_todo
+                            .iter()
+                            .chain(items.iter().filter(|item| item.todo.is_some()))
+                        {
+                            if s.current_todo
+                                .as_ref()
+                                .is_none_or(|old| item.last_seq >= old.last_seq)
+                            {
+                                s.current_todo = Some(item.clone());
+                            }
+                        }
                         let replace = matches!(
                             request.direction,
                             HistoryDirection::Latest | HistoryDirection::Around
@@ -770,6 +784,7 @@ impl SessionView {
             ready: true,
             last_seq: 0,
             items: vec![],
+            current_todo: None,
             gaps: vec![],
             history: HistoryView {
                 enabled: true,
@@ -790,6 +805,7 @@ impl SessionView {
             } else {
                 vec![]
             },
+            current_todo: self.current_todo.clone(),
             gaps: self.gaps.clone(),
             history: self.history.clone(),
             source_seq: 0,
@@ -814,6 +830,30 @@ impl SessionView {
         }
         self.last_seq = seq;
         self.source_seq = source;
+        // Task progress continues to update while the user reads older messages.
+        if event.todo.is_some() {
+            let mut current = self.current_todo.clone().unwrap_or(Item {
+                id: format!("todo:{}", self.snapshot.instance_id),
+                role: "tool".into(),
+                title: Some("todo".into()),
+                text: String::new(),
+                first_seq: seq,
+                last_seq: seq,
+                message_id: None,
+                tool_call_id: None,
+                content_index: None,
+                arguments: None,
+                phase: None,
+                complete: true,
+                is_error: false,
+                truncated: false,
+                images: vec![],
+                todo: None,
+            });
+            current.last_seq = seq;
+            current.todo = event.todo.clone();
+            self.current_todo = Some(current);
+        }
         if self.history.enabled && self.history.has_after {
             return;
         }
@@ -888,50 +928,69 @@ impl SessionView {
                 .retain(|i| i.id != placeholder || !i.text.is_empty());
         }
         let block_id = format!("{message_id}:{}", event.content_index.unwrap_or(0));
-        let (role, id, complete) = match event.kind {
-            EventKind::UserMessage => ("user", format!("user:{seq}"), true),
-            EventKind::MessageStart | EventKind::MessageEnd => (
-                "assistant",
-                format!("assistant:{message_id}"),
-                matches!(event.kind, EventKind::MessageEnd),
-            ),
-            EventKind::TextStart | EventKind::MessageDelta | EventKind::TextEnd => (
-                "assistant",
-                if event.content_index.is_some() {
-                    format!("assistant:{block_id}")
-                } else {
-                    format!("assistant:{message_id}")
-                },
-                matches!(event.kind, EventKind::TextEnd),
-            ),
-            EventKind::ThinkingStart | EventKind::ThinkingDelta | EventKind::ThinkingEnd => (
-                "thinking",
-                format!("thinking:{block_id}"),
-                matches!(event.kind, EventKind::ThinkingEnd),
-            ),
-            EventKind::ToolCallStart | EventKind::ToolCallDelta | EventKind::ToolCallEnd => {
-                ("tool", format!("tool-call:{block_id}"), false)
-            }
-            EventKind::ToolStart | EventKind::ToolUpdate | EventKind::ToolEnd => (
+        let stable_todo = self.snapshot.capabilities.iter().any(|c| c == "todo")
+            && (event.tool_name.as_deref() == Some("todo") || event.todo.is_some())
+            && matches!(
+                event.kind,
+                EventKind::ToolCallStart
+                    | EventKind::ToolCallDelta
+                    | EventKind::ToolCallEnd
+                    | EventKind::ToolStart
+                    | EventKind::ToolUpdate
+                    | EventKind::ToolEnd
+            );
+        let (role, id, complete) = if stable_todo {
+            (
                 "tool",
-                self.items
-                    .iter()
-                    .find(|i| {
-                        i.role == "tool"
-                            && event.tool_call_id.is_some()
-                            && i.tool_call_id.as_ref() == event.tool_call_id.as_ref()
-                    })
-                    .map(|i| i.id.clone())
-                    .unwrap_or_else(|| {
-                        format!(
-                            "tool:{}",
-                            event.tool_call_id.as_deref().unwrap_or("unknown")
-                        )
-                    }),
+                format!("todo:{}", self.snapshot.instance_id),
                 matches!(event.kind, EventKind::ToolEnd),
-            ),
-            EventKind::Error => ("error", format!("error:{seq}"), true),
-            _ => return,
+            )
+        } else {
+            match event.kind {
+                EventKind::UserMessage => ("user", format!("user:{seq}"), true),
+                EventKind::MessageStart | EventKind::MessageEnd => (
+                    "assistant",
+                    format!("assistant:{message_id}"),
+                    matches!(event.kind, EventKind::MessageEnd),
+                ),
+                EventKind::TextStart | EventKind::MessageDelta | EventKind::TextEnd => (
+                    "assistant",
+                    if event.content_index.is_some() {
+                        format!("assistant:{block_id}")
+                    } else {
+                        format!("assistant:{message_id}")
+                    },
+                    matches!(event.kind, EventKind::TextEnd),
+                ),
+                EventKind::ThinkingStart | EventKind::ThinkingDelta | EventKind::ThinkingEnd => (
+                    "thinking",
+                    format!("thinking:{block_id}"),
+                    matches!(event.kind, EventKind::ThinkingEnd),
+                ),
+                EventKind::ToolCallStart | EventKind::ToolCallDelta | EventKind::ToolCallEnd => {
+                    ("tool", format!("tool-call:{block_id}"), false)
+                }
+                EventKind::ToolStart | EventKind::ToolUpdate | EventKind::ToolEnd => (
+                    "tool",
+                    self.items
+                        .iter()
+                        .find(|i| {
+                            i.role == "tool"
+                                && event.tool_call_id.is_some()
+                                && i.tool_call_id.as_ref() == event.tool_call_id.as_ref()
+                        })
+                        .map(|i| i.id.clone())
+                        .unwrap_or_else(|| {
+                            format!(
+                                "tool:{}",
+                                event.tool_call_id.as_deref().unwrap_or("unknown")
+                            )
+                        }),
+                    matches!(event.kind, EventKind::ToolEnd),
+                ),
+                EventKind::Error => ("error", format!("error:{seq}"), true),
+                _ => return,
+            }
         };
         let index = self
             .items
@@ -939,6 +998,7 @@ impl SessionView {
             .position(|i| i.id == id)
             .unwrap_or_else(|| {
                 self.items.push(Item {
+                    todo: None,
                     images: vec![],
                     id: id.clone(),
                     first_seq: seq,
@@ -964,6 +1024,15 @@ impl SessionView {
             return;
         }
         item.last_seq = seq;
+        if stable_todo && event.kind == EventKind::ToolCallStart {
+            item.arguments = None;
+            item.complete = false;
+            item.is_error = false;
+            item.truncated = false;
+            item.phase = Some("generating".into());
+            item.message_id = event.message_id.clone();
+            item.content_index = event.content_index;
+        }
         let text = event.text.unwrap_or_default();
         if event.tool_call_id.as_ref().is_some_and(|id| !id.is_empty()) {
             item.tool_call_id = event.tool_call_id;
@@ -1018,6 +1087,9 @@ impl SessionView {
             EventKind::MessageStart | EventKind::TextStart => {}
             _ => item.text = text,
         }
+        if event.todo.is_some() {
+            item.todo = event.todo;
+        }
         item.complete |= complete;
         item.is_error |= event.is_error;
         item.truncated |= event.truncated;
@@ -1043,7 +1115,15 @@ impl SessionView {
                     .sum::<usize>()
                     > 4 * 1024 * 1024)
         {
-            self.items.remove(0);
+            // Keep the session's current task state while releasing old chat.
+            let Some(oldest) = self
+                .items
+                .iter()
+                .position(|item| !item.id.starts_with("todo:"))
+            else {
+                break;
+            };
+            self.items.remove(oldest);
             self.gap("Older local messages have been released");
         }
     }
@@ -1061,6 +1141,7 @@ mod tests {
             size: 68,
         };
         let event = EventData {
+            todo: None,
             images: vec![image.clone()],
             kind: EventKind::TextEnd,
             message_id: Some("m".into()),
@@ -1076,6 +1157,7 @@ mod tests {
             2,
             2,
             EventData {
+                todo: None,
                 images: vec![],
                 kind: EventKind::MessageEnd,
                 text: None,
@@ -1086,6 +1168,7 @@ mod tests {
             3,
             3,
             EventData {
+                todo: None,
                 images: vec![],
                 kind: EventKind::AgentSettled,
                 text: None,
@@ -1246,6 +1329,104 @@ mod tests {
             },
         ));
     }
+    #[test]
+    fn todo_operations_update_one_stable_block_and_preserve_its_position() {
+        let mut p = Projection::default();
+        let replay = start(&mut p, "i");
+        end(&mut p, &replay, "i", 0);
+        let session = &mut p.view.sessions[0];
+        session.snapshot.capabilities = vec!["todo".into()];
+        let make = |kind: EventKind, call: &str, todo| EventData {
+            kind,
+            todo,
+            images: vec![],
+            message_id: Some(call.into()),
+            content_index: Some(0),
+            text: Some("result".into()),
+            tool_call_id: Some(call.into()),
+            tool_name: Some("todo".into()),
+            is_error: false,
+            truncated: false,
+        };
+        let phases = |status| {
+            vec![pirc_protocol::TodoPhase {
+                name: "Build".into(),
+                tasks: vec![pirc_protocol::TodoTask {
+                    content: "Work".into(),
+                    status,
+                    blocker: None,
+                }],
+            }]
+        };
+        session.event(1, 1, make(EventKind::ToolCallStart, "first", None));
+        session.event(
+            2,
+            2,
+            make(
+                EventKind::ToolEnd,
+                "first",
+                Some(phases(pirc_protocol::TodoStatus::InProgress)),
+            ),
+        );
+        let id = session.items[0].id.clone();
+        session.event(
+            3,
+            3,
+            EventData {
+                tool_name: None,
+                tool_call_id: None,
+                kind: EventKind::TextEnd,
+                ..make(EventKind::TextEnd, "answer", None)
+            },
+        );
+        session.event(4, 4, make(EventKind::ToolCallStart, "second", None));
+        session.event(
+            5,
+            5,
+            make(
+                EventKind::ToolEnd,
+                "second",
+                Some(phases(pirc_protocol::TodoStatus::Completed)),
+            ),
+        );
+        assert_eq!(session.items.len(), 2);
+        assert_eq!(session.items[0].id, id);
+        assert_eq!(session.items[0].first_seq, 1);
+        assert_eq!(session.items[0].last_seq, 5);
+        assert_eq!(
+            session.items[0].todo.as_ref().unwrap()[0].tasks[0].status,
+            pirc_protocol::TodoStatus::Completed
+        );
+        assert_eq!(session.items[1].role, "assistant");
+        for seq in 6..610 {
+            session.event(
+                seq,
+                seq,
+                EventData {
+                    tool_name: None,
+                    tool_call_id: None,
+                    kind: EventKind::TextEnd,
+                    ..make(EventKind::TextEnd, &format!("answer-{seq}"), None)
+                },
+            );
+        }
+        session.event(
+            610,
+            610,
+            make(
+                EventKind::ToolEnd,
+                "third",
+                Some(phases(pirc_protocol::TodoStatus::Blocked)),
+            ),
+        );
+        assert_eq!(session.items.iter().filter(|item| item.id == id).count(), 1);
+        assert_eq!(session.items[0].first_seq, 1);
+        assert_eq!(
+            session.items[0].todo.as_ref().unwrap()[0].tasks[0].status,
+            pirc_protocol::TodoStatus::Blocked
+        );
+    }
+
     fn event(p: &mut Projection, instance: &str, seq: u64, kind: EventKind, text: &str) {
         p.receive(packet(Message::Event {
             session_id: format!("s-{instance}"),
@@ -1253,6 +1434,7 @@ mod tests {
             source_seq: seq,
             seq,
             event: EventData {
+                todo: None,
                 images: vec![],
                 kind,
                 message_id: Some("m".into()),
@@ -1279,6 +1461,7 @@ mod tests {
             source_seq: seq,
             seq,
             event: EventData {
+                todo: None,
                 images: vec![],
                 kind,
                 message_id: Some("m".into()),
@@ -1580,6 +1763,7 @@ mod tests {
             source_seq: 3,
             seq: 3,
             event: EventData {
+                todo: None,
                 images: vec![],
                 kind: EventKind::MessageDelta,
                 message_id: Some("m".into()),

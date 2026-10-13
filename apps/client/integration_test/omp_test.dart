@@ -1,3 +1,4 @@
+import 'package:pirc/agent_interactions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -38,6 +39,10 @@ void main() {
         );
         final session = model.onlineSessions.firstWhere(
           (s) => s.agentId == 'omp',
+        );
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.ensureVisible(
+          find.byKey(Key('session-${session.instance}')),
         );
         await tester.tap(find.byKey(Key('session-${session.instance}')));
         await wait(
@@ -111,6 +116,80 @@ void main() {
               model.selected?.state == 'idle',
           'App receives a streamed OMP answer',
         );
+        await tester.enterText(find.byKey(const Key('prompt-editor')), 'ASK');
+        await wait(
+          () =>
+              tester
+                  .widget<IconButton>(find.byKey(const Key('composer-action')))
+                  .onPressed !=
+              null,
+          'Ask prompt can send',
+        );
+        await tester.tap(find.byKey(const Key('composer-action')));
+        await wait(
+          () => find.byKey(const Key('submit-ask')).evaluate().isNotEmpty,
+          'App renders native Ask questions',
+        );
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('ask-option-features-0')),
+        );
+        await tester.tap(find.byKey(const ValueKey('ask-option-features-0')));
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('ask-option-features-1')),
+        );
+        await tester.tap(find.byKey(const ValueKey('ask-option-features-1')));
+        await tester.ensureVisible(
+          find.byKey(const ValueKey('ask-text-features')),
+        );
+        await tester.enterText(
+          find.byKey(const ValueKey('ask-text-features')),
+          'Custom App answer',
+        );
+        FocusManager.instance.primaryFocus?.unfocus();
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.ensureVisible(find.byKey(const Key('submit-ask')));
+        await tester.pump(const Duration(milliseconds: 200));
+        await tester.tap(find.byKey(const Key('submit-ask')));
+        await wait(
+          () =>
+              model.selected?.state == 'idle' &&
+              model.selected?.attention == false &&
+              model.selected!.items.any(
+                (i) =>
+                    i['role'] == 'tool' &&
+                    (i['text'] as String).contains('Custom App answer'),
+              ),
+          'App submits OMP Ask and agent continues',
+        );
+        expect(find.byKey(const Key('submit-ask')), findsNothing);
+        await tester.enterText(find.byKey(const Key('prompt-editor')), 'TODO');
+        await wait(
+          () =>
+              tester
+                  .widget<IconButton>(find.byKey(const Key('composer-action')))
+                  .onPressed !=
+              null,
+          'Todo prompt can send',
+        );
+        await tester.tap(find.byKey(const Key('composer-action')));
+        await wait(
+          () =>
+              model.selected?.state == 'idle' &&
+              model.selected!.items.any(
+                (i) =>
+                    (i['todo'] as List?)?.any(
+                      (p) => (p['tasks'] as List).any(
+                        (t) => t['status'] == 'completed',
+                      ),
+                    ) ==
+                    true,
+              ),
+          'App receives structured Todo tasks',
+        );
+        expect(find.byKey(const Key('persistent-todo-panel')), findsOneWidget);
+        await tester.tap(find.byKey(const Key('toggle-todo-panel')));
+        await tester.pump();
+        expect(find.byType(TodoList), findsOneWidget);
         expect(tester.takeException(), isNull);
       } finally {
         model.disconnect();

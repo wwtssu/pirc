@@ -597,6 +597,11 @@ async fn from_extension(app: &App, owner: &str, tx: &Sender, e: Envelope) -> Vec
                             instance_id: i,
                             ..
                         }
+                        | Message::AnswerAsk {
+                            session_id: s,
+                            instance_id: i,
+                            ..
+                        }
                         | Message::Prompt {
                             session_id: s,
                             instance_id: i,
@@ -650,6 +655,18 @@ fn history_page(
         return Err("INVALID_HISTORY");
     }
     let items = &live.transcript.items;
+    let current_todo = items
+        .iter()
+        .filter(|item| item.todo.is_some())
+        .max_by_key(|item| item.last_seq)
+        .cloned()
+        .map(|mut item| {
+            item.text.clear();
+            item.arguments = None;
+            item.images.clear();
+            item
+        });
+    let task_bytes = serde_json::to_vec(&current_todo).unwrap().len();
     let n = items.len();
     let limit = limit as usize;
     let (mut start, mut end) = match direction {
@@ -675,7 +692,9 @@ fn history_page(
         }
     };
     // One frame must stay below the shared transport limit, even for large tools.
-    while end - start > 1 && serde_json::to_vec(&items[start..end]).unwrap().len() > 700 * 1024 {
+    while end - start > 1
+        && serde_json::to_vec(&items[start..end]).unwrap().len() + task_bytes > 700 * 1024
+    {
         match direction {
             HistoryDirection::Latest | HistoryDirection::Before => start += 1,
             HistoryDirection::After => end -= 1,
@@ -697,6 +716,7 @@ fn history_page(
         session_id: live.snapshot.session_id.clone(),
         instance_id: live.snapshot.instance_id.clone(),
         items: items[start..end].to_vec(),
+        current_todo,
         has_before: start > 0,
         has_after: end < n,
         last_seq: live.seq,
@@ -922,6 +942,12 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
             session_id,
             instance_id,
         }
+        | Message::AnswerAsk {
+            generation_id,
+            session_id,
+            instance_id,
+            ..
+        }
         | Message::Prompt {
             generation_id,
             session_id,
@@ -1014,6 +1040,38 @@ async fn from_control(app: &App, e: Envelope) -> Vec<Envelope> {
                 };
                 if let Some(code) = code {
                     return vec![reject(&e.request_id, session_id, instance_id, code)];
+                }
+            }
+            if let Message::AnswerAsk {
+                prompt_id, answers, ..
+            } = &e.message
+            {
+                let pending = target
+                    .snapshot
+                    .ui_prompt
+                    .as_ref()
+                    .and_then(|p| p.ask.as_ref());
+                if !pending.is_some_and(|p| p.id == *prompt_id) {
+                    return vec![reject(
+                        &e.request_id,
+                        session_id,
+                        instance_id,
+                        "STALE_PROMPT",
+                    )];
+                }
+                if answers.len() > 32
+                    || answers.iter().any(|a| {
+                        a.selected.len() > 64
+                            || a.text.as_ref().is_some_and(|s| s.len() > 64 * 1024)
+                            || a.note.as_ref().is_some_and(|s| s.len() > 64 * 1024)
+                    })
+                {
+                    return vec![reject(
+                        &e.request_id,
+                        session_id,
+                        instance_id,
+                        "INVALID_ARGUMENT",
+                    )];
                 }
             }
             if let Message::Prompt { text, images, .. } = &e.message {
@@ -1739,6 +1797,7 @@ mod tests {
                 seq: 0,
                 source_seq: 3,
                 event: EventData {
+                    todo: None,
                     images: vec![],
                     kind: EventKind::UserMessage,
                     message_id: None,

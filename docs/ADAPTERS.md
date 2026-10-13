@@ -44,5 +44,18 @@ The client hides controls that the adapter does not advertise.
 `image_prompt` is present. Unsupported agent-specific widgets require a textual
 representation until a shared content type is introduced.
 
+`ui_prompt.ask` carries a pending question request with a unique ID. The client
+replies with `AnswerAsk`, targeting the current generation, instance, and prompt.
+Adapters validate question IDs and selections; completed or cancelled requests
+reject late answers. A question can remain answerable in the device terminal.
+
+Tool events can include `todo` phases with task status and blocker metadata.
+For adapters advertising `todo`, materialized history coalesces operations into
+one stable `todo:<instance_id>` block. Its first sequence and position remain
+fixed; later operations replace its structured state and textual result. The
+client renders phases and tasks in a persistent, read-only panel above the
+composer. History pages include `current_todo` independently of the requested
+range; live task updates continue while older messages are visible.
+
 Pi and OMP adapters are implemented. See [OMP adapter](../extensions/omp/README.md) for its API mapping and validation. Additional adapters must preserve
 the shared identity, acknowledgement, replay, and history semantics.

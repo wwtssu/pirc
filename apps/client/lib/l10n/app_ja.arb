@@ -370,5 +370,17 @@
   "attachmentFile": "ファイル",
   "removeAttachment": "添付ファイルを削除",
   "fileSelectionFailed": "ファイルの選択またはアップロードができませんでした",
-  "fileTooLarge": "ファイルは20 MB以下にしてください"
+  "fileTooLarge": "ファイルは20 MB以下にしてください",
+  "answerQuestions": "質問に回答",
+  "submitAnswers": "回答を送信",
+  "customAnswer": "自由回答",
+  "answerNote": "補足",
+  "chooseAnswer": "各質問の選択肢を選ぶか、回答を入力してください。",
+  "answerExpired": "この質問への回答は終了しました。",
+  "answerTimedOut": "回答の送信がタイムアウトしました",
+  "todoTitle": "タスク",
+  "todoPending": "未着手",
+  "todoInProgress": "進行中",
+  "todoBlocked": "保留",
+  "todoAbandoned": "中止"
 }

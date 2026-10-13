@@ -1,5 +1,6 @@
 import 'transcript_images.dart';
 import 'attachment_button.dart';
+import 'agent_interactions.dart';
 
 import 'package:image_picker/image_picker.dart';
 import 'package:file_selector/file_selector.dart';
@@ -1127,6 +1128,11 @@ class _SessionPageState extends State<SessionPage> {
                       .toList()
                 : s.items)
             .toList();
+    transcriptItems.removeWhere(
+      (item) =>
+          item['todo'] != null ||
+          (item['id'] as String? ?? '').startsWith('todo:'),
+    );
     final compactOperations = model.commands.where(
       (c) => c['instance_id'] == s.instance && c['kind'] == 'compact',
     );
@@ -1240,325 +1246,369 @@ class _SessionPageState extends State<SessionPage> {
       ),
       body: SafeArea(
         top: false,
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                PircSpacing.s22,
-                PircSpacing.s2,
-                PircSpacing.s22,
-                PircSpacing.s12,
-              ),
-              child: LayoutBuilder(
-                builder: (context, constraints) => Row(
-                  key: const Key('session-status-row'),
-                  children: [
-                    _StatusDot(connected: model.connection == 'connected'),
-                    const SizedBox(width: PircSpacing.s7),
-                    Expanded(
-                      child: Text(
-                        context.localize(model.connectionDescription),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: context.pircText.path,
-                      ),
-                    ),
-                    const SizedBox(width: PircSpacing.s10),
-                    ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth:
-                            constraints.maxWidth *
-                            PircLayout.statusBadgeWidthFactor,
-                      ),
-                      child: Container(
-                        key: const Key('session-state-badge'),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: PircSpacing.s9,
-                          vertical: PircSpacing.s4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: connected && running
-                              ? context.pircColors.primaryContainer
-                              : context.pircColors.outlineVariant.withValues(
-                                  alpha: PircLayout.inactiveOpacity,
-                                ),
-                          borderRadius: PircRadii.badge,
-                        ),
+        child: LayoutBuilder(
+          builder: (context, viewport) => Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  PircSpacing.s22,
+                  PircSpacing.s2,
+                  PircSpacing.s22,
+                  PircSpacing.s12,
+                ),
+                child: LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    key: const Key('session-status-row'),
+                    children: [
+                      _StatusDot(connected: model.connection == 'connected'),
+                      const SizedBox(width: PircSpacing.s7),
+                      Expanded(
                         child: Text(
-                          connected
-                              ? ((s.snapshot['controls']
-                                            as Map?)?['compacting'] ==
-                                        true
-                                    ? context.l10n.compacting
-                                    : context.localize(stateLabel(s.state)))
-                              : context.l10n.stateUnconfirmed,
+                          context.localize(model.connectionDescription),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: context.pircText.tag.copyWith(
+                          style: context.pircText.path,
+                        ),
+                      ),
+                      const SizedBox(width: PircSpacing.s10),
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth:
+                              constraints.maxWidth *
+                              PircLayout.statusBadgeWidthFactor,
+                        ),
+                        child: Container(
+                          key: const Key('session-state-badge'),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: PircSpacing.s9,
+                            vertical: PircSpacing.s4,
+                          ),
+                          decoration: BoxDecoration(
                             color: connected && running
-                                ? context.pircColors.primary
-                                : context.pircColors.onSurfaceVariant,
+                                ? context.pircColors.primaryContainer
+                                : context.pircColors.outlineVariant.withValues(
+                                    alpha: PircLayout.inactiveOpacity,
+                                  ),
+                            borderRadius: PircRadii.badge,
+                          ),
+                          child: Text(
+                            connected
+                                ? ((s.snapshot['controls']
+                                              as Map?)?['compacting'] ==
+                                          true
+                                      ? context.l10n.compacting
+                                      : context.localize(stateLabel(s.state)))
+                                : context.l10n.stateUnconfirmed,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.pircText.tag.copyWith(
+                              color: connected && running
+                                  ? context.pircColors.primary
+                                  : context.pircColors.onSurfaceVariant,
+                            ),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if ((s.attention &&
+                      (s.snapshot['ui_prompt'] as Map?)?['ask'] == null) ||
+                  s.gaps.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    PircSpacing.s20,
+                    0,
+                    PircSpacing.s20,
+                    PircSpacing.s10,
+                  ),
+                  child: _InlineNotice(
+                    text: s.attention
+                        ? ((s.snapshot['ui_prompt'] as Map?)?['title']
+                                          as String?)
+                                      ?.isNotEmpty ==
+                                  true
+                              ? '${context.l10n.completeOnTerminal}: ${(s.snapshot['ui_prompt'] as Map)['title']}'
+                              : context.l10n.completeOnTerminal
+                        : context.l10n.incompleteConversation,
+                  ),
+                ),
+              Expanded(
+                child: TranscriptList(
+                  key: transcript,
+                  bottomOverlap:
+                      s.todo?.isNotEmpty == true &&
+                          !showNotice &&
+                          model.error == null
+                      ? PircRadii.activity.topLeft.x + PircSpacing.s8
+                      : 0,
+                  model: model,
+                  session: s,
+                  items: [
+                    ...transcriptItems,
+                    if ((s.snapshot['ui_prompt'] as Map?)?['ask'] != null)
+                      {
+                        'id':
+                            'ask-${(s.snapshot['ui_prompt'] as Map)['ask']['id']}',
+                        'role': 'ask',
+                        'request': (s.snapshot['ui_prompt'] as Map)['ask'],
+                      },
+                    if (awaitingReply)
+                      {'id': 'awaiting-reply', 'role': 'waiting', 'text': ''},
+                  ],
+                  itemBuilder: (item) => item['role'] == 'ask'
+                      ? AskPanel(
+                          key: ValueKey(item['id']),
+                          request: (item['request'] as Map)
+                              .cast<String, dynamic>(),
+                          session: s,
+                          model: model,
+                        )
+                      : item['role'] == 'waiting'
+                      ? const _AwaitingReply(key: ValueKey('awaiting-reply'))
+                      : MessageBubble(
+                          key: ValueKey(item['id']),
+                          item: item,
+                          model: model,
+                          instance: s.instance,
+                        ),
+                  empty: _EmptyState(
+                    icon: LucideIcons.messageCircle,
+                    title: s.state == 'offline'
+                        ? context.l10n.sessionOffline
+                        : context.l10n.continueConversation,
+                    description: s.state == 'offline'
+                        ? context.l10n.reopenSessionDescription
+                        : context.l10n.continueDescription,
+                  ),
+                ),
+              ),
+              if (showNotice)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    PircSpacing.s20,
+                    0,
+                    PircSpacing.s20,
+                    PircSpacing.s8,
+                  ),
+                  child: _InlineNotice(
+                    text: context.localize(resultLabel(notice)),
+                    textKey: const Key('command-result'),
+                    action: notice['status'] == 'unknown'
+                        ? TextButton(
+                            onPressed: () => model.confirmUnknown(
+                              notice['request_id'] as String,
+                            ),
+                            child: Text(context.l10n.confirmedOnTerminal),
+                          )
+                        : null,
+                  ),
+                ),
+              if (model.error != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    PircSpacing.s20,
+                    0,
+                    PircSpacing.s20,
+                    PircSpacing.s8,
+                  ),
+                  child: _InlineNotice(text: context.localize(model.error!)),
+                ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  PircSpacing.s16,
+                  PircSpacing.s8,
+                  PircSpacing.s16,
+                  PircSpacing.s12,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (s.todo?.isNotEmpty == true) ...[
+                      PersistentTodoPanel(
+                        key: ValueKey('tasks-${s.instance}'),
+                        phases: s.todo!,
+                        maxTreeHeight:
+                            (viewport.maxHeight -
+                                    PircLayout.taskPanelReservedHeight)
+                                .clamp(0.0, PircLayout.activityMaxHeight),
+                      ),
+                      const SizedBox(height: PircSpacing.s8),
+                    ],
+                    if (slashCommands.isNotEmpty)
+                      SizedBox(
+                        height: PircLayout.activityMaxHeight,
+                        child: ListView.builder(
+                          itemCount: slashCommands.length,
+                          itemBuilder: (_, index) {
+                            final command = slashCommands[index];
+                            return ListTile(
+                              title: Text(
+                                command['source'] == 'extension'
+                                    ? context.l10n.deviceCommand(
+                                        command['name'].toString(),
+                                      )
+                                    : '/${command['name']}',
+                                style: context.pircText.activityTitle,
+                              ),
+                              subtitle: Text(
+                                context.localize(
+                                  command['description'] as String? ??
+                                      command['source'] as String,
+                                ),
+                                style: context.pircText.hint,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              onTap: command['source'] == 'extension'
+                                  ? null
+                                  : () {
+                                      final builtin =
+                                          command['source'] == 'builtin';
+                                      final name = command['name'] as String;
+                                      model.setDraft(
+                                        s,
+                                        '/$name${builtin ? '' : ' '}',
+                                      );
+                                      if (builtin &&
+                                          name != 'compact' &&
+                                          model.canSend(s)) {
+                                        submit(stop: false);
+                                      }
+                                    },
+                            );
+                          },
+                        ),
+                      ),
+                    Container(
+                      key: const Key('composer'),
+                      padding: const EdgeInsets.all(PircSpacing.s6),
+                      decoration: BoxDecoration(
+                        color: context.pircColors.surface,
+                        borderRadius: PircRadii.composer,
+                        border: Border.all(
+                          color: context.pircColors.outlineVariant,
+                          width: PircLayout.borderWidth,
+                        ),
+                        boxShadow: PircEffects.composerShadow,
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          DraftAttachments(
+                            fileName: model.draftFile(s)?.name,
+                            image: model.draftImage(s),
+                            imageName: model.draftImageName(s),
+                            onRemoveFile:
+                                actionInFlight ||
+                                    model.pending(s) ||
+                                    pickingImage
+                                ? null
+                                : () => model.removeFile(s),
+                            onRemoveImage:
+                                actionInFlight ||
+                                    model.pending(s) ||
+                                    pickingImage
+                                ? null
+                                : () => model.removeImage(s),
+                          ),
+                          Focus(
+                            onKeyEvent: handleEditorKey,
+                            child: TextField(
+                              key: const Key('prompt-editor'),
+                              textInputAction: TextInputAction.send,
+                              onSubmitted: (_) => sendFromKeyboard(),
+                              controller: editor,
+                              minLines: 1,
+                              maxLines: 4,
+                              textAlignVertical: TextAlignVertical.center,
+                              style: context.pircText.body,
+                              onChanged: (text) {
+                                lastDraft = text;
+                                model.setDraft(s, text);
+                              },
+                              decoration: PircInputDecorations.composer
+                                  .copyWith(
+                                    prefixIcon: AttachmentButton(
+                                      key: const Key('attach-attachment'),
+                                      loading: pickingImage,
+                                      images: s.supportsCapability(
+                                        'image_prompt',
+                                      ),
+                                      onSelected:
+                                          connected &&
+                                              !actionInFlight &&
+                                              !pickingImage &&
+                                              !model.pending(s)
+                                          ? chooseAttachment
+                                          : null,
+                                    ),
+                                    hintText: context.l10n.messageHint,
+                                  ),
+                            ),
+                          ),
+                          const SizedBox(height: PircSpacing.s4),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: PircSpacing.s4,
+                            ),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: SessionSettingsBar(
+                                    key: const Key('session-settings'),
+                                    session: s,
+                                    enabled: canConfigure,
+                                    loadingCommand: loadingBuiltin,
+                                    onSelect: openBuiltin,
+                                  ),
+                                ),
+                                const SizedBox(width: PircSpacing.s4),
+                                IconButton.filled(
+                                  key: const Key('composer-action'),
+                                  tooltip: tooltip,
+                                  onPressed: canAct
+                                      ? () => submit(stop: running)
+                                      : null,
+                                  style: context.pircComposerButtonStyle(
+                                    waiting: waiting && connected,
+                                  ),
+                                  icon:
+                                      waiting &&
+                                          connected &&
+                                          unresolved?['status'] != 'unknown'
+                                      ? SizedBox(
+                                          width: PircIconSizes.small,
+                                          height: PircIconSizes.small,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth:
+                                                PircLayout.loadingStrokeWidth,
+                                            color: context.pircColors.primary,
+                                            semanticsLabel: context
+                                                .l10n
+                                                .waitingForConfirmation,
+                                          ),
+                                        )
+                                      : Icon(
+                                          running || stopping
+                                              ? LucideIcons.square
+                                              : LucideIcons.arrowUp,
+                                        ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            if (s.attention || s.gaps.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  PircSpacing.s20,
-                  0,
-                  PircSpacing.s20,
-                  PircSpacing.s10,
-                ),
-                child: _InlineNotice(
-                  text: s.attention
-                      ? ((s.snapshot['ui_prompt'] as Map?)?['title'] as String?)
-                                    ?.isNotEmpty ==
-                                true
-                            ? '${context.l10n.completeOnTerminal}: ${(s.snapshot['ui_prompt'] as Map)['title']}'
-                            : context.l10n.completeOnTerminal
-                      : context.l10n.incompleteConversation,
-                ),
-              ),
-            Expanded(
-              child: TranscriptList(
-                key: transcript,
-                model: model,
-                session: s,
-                items: [
-                  ...transcriptItems,
-                  if (awaitingReply)
-                    {'id': 'awaiting-reply', 'role': 'waiting', 'text': ''},
-                ],
-                itemBuilder: (item) => item['role'] == 'waiting'
-                    ? const _AwaitingReply(key: ValueKey('awaiting-reply'))
-                    : MessageBubble(
-                        key: ValueKey(item['id']),
-                        item: item,
-                        model: model,
-                        instance: s.instance,
-                      ),
-                empty: _EmptyState(
-                  icon: LucideIcons.messageCircle,
-                  title: s.state == 'offline'
-                      ? context.l10n.sessionOffline
-                      : context.l10n.continueConversation,
-                  description: s.state == 'offline'
-                      ? context.l10n.reopenSessionDescription
-                      : context.l10n.continueDescription,
-                ),
-              ),
-            ),
-            if (showNotice)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  PircSpacing.s20,
-                  0,
-                  PircSpacing.s20,
-                  PircSpacing.s8,
-                ),
-                child: _InlineNotice(
-                  text: context.localize(resultLabel(notice)),
-                  textKey: const Key('command-result'),
-                  action: notice['status'] == 'unknown'
-                      ? TextButton(
-                          onPressed: () => model.confirmUnknown(
-                            notice['request_id'] as String,
-                          ),
-                          child: Text(context.l10n.confirmedOnTerminal),
-                        )
-                      : null,
-                ),
-              ),
-            if (model.error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  PircSpacing.s20,
-                  0,
-                  PircSpacing.s20,
-                  PircSpacing.s8,
-                ),
-                child: _InlineNotice(text: context.localize(model.error!)),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                PircSpacing.s16,
-                PircSpacing.s8,
-                PircSpacing.s16,
-                PircSpacing.s12,
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (slashCommands.isNotEmpty)
-                    SizedBox(
-                      height: PircLayout.activityMaxHeight,
-                      child: ListView.builder(
-                        itemCount: slashCommands.length,
-                        itemBuilder: (_, index) {
-                          final command = slashCommands[index];
-                          return ListTile(
-                            title: Text(
-                              command['source'] == 'extension'
-                                  ? context.l10n.deviceCommand(
-                                      command['name'].toString(),
-                                    )
-                                  : '/${command['name']}',
-                              style: context.pircText.activityTitle,
-                            ),
-                            subtitle: Text(
-                              context.localize(
-                                command['description'] as String? ??
-                                    command['source'] as String,
-                              ),
-                              style: context.pircText.hint,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            onTap: command['source'] == 'extension'
-                                ? null
-                                : () {
-                                    final builtin =
-                                        command['source'] == 'builtin';
-                                    final name = command['name'] as String;
-                                    model.setDraft(
-                                      s,
-                                      '/$name${builtin ? '' : ' '}',
-                                    );
-                                    if (builtin &&
-                                        name != 'compact' &&
-                                        model.canSend(s)) {
-                                      submit(stop: false);
-                                    }
-                                  },
-                          );
-                        },
-                      ),
-                    ),
-                  Container(
-                    key: const Key('composer'),
-                    padding: const EdgeInsets.all(PircSpacing.s6),
-                    decoration: BoxDecoration(
-                      color: context.pircColors.surface,
-                      borderRadius: PircRadii.composer,
-                      border: Border.all(
-                        color: context.pircColors.outlineVariant,
-                        width: PircLayout.borderWidth,
-                      ),
-                      boxShadow: PircEffects.composerShadow,
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        DraftAttachments(
-                          fileName: model.draftFile(s)?.name,
-                          image: model.draftImage(s),
-                          imageName: model.draftImageName(s),
-                          onRemoveFile:
-                              actionInFlight || model.pending(s) || pickingImage
-                              ? null
-                              : () => model.removeFile(s),
-                          onRemoveImage:
-                              actionInFlight || model.pending(s) || pickingImage
-                              ? null
-                              : () => model.removeImage(s),
-                        ),
-                        Focus(
-                          onKeyEvent: handleEditorKey,
-                          child: TextField(
-                            key: const Key('prompt-editor'),
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => sendFromKeyboard(),
-                            controller: editor,
-                            minLines: 1,
-                            maxLines: 4,
-                            textAlignVertical: TextAlignVertical.center,
-                            style: context.pircText.body,
-                            onChanged: (text) {
-                              lastDraft = text;
-                              model.setDraft(s, text);
-                            },
-                            decoration: PircInputDecorations.composer.copyWith(
-                              prefixIcon: AttachmentButton(
-                                key: const Key('attach-attachment'),
-                                loading: pickingImage,
-                                images: s.supportsCapability('image_prompt'),
-                                onSelected:
-                                    connected &&
-                                        !actionInFlight &&
-                                        !pickingImage &&
-                                        !model.pending(s)
-                                    ? chooseAttachment
-                                    : null,
-                              ),
-                              hintText: context.l10n.messageHint,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: PircSpacing.s4),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: PircSpacing.s4,
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Expanded(
-                                child: SessionSettingsBar(
-                                  key: const Key('session-settings'),
-                                  session: s,
-                                  enabled: canConfigure,
-                                  loadingCommand: loadingBuiltin,
-                                  onSelect: openBuiltin,
-                                ),
-                              ),
-                              const SizedBox(width: PircSpacing.s4),
-                              IconButton.filled(
-                                key: const Key('composer-action'),
-                                tooltip: tooltip,
-                                onPressed: canAct
-                                    ? () => submit(stop: running)
-                                    : null,
-                                style: context.pircComposerButtonStyle(
-                                  waiting: waiting && connected,
-                                ),
-                                icon:
-                                    waiting &&
-                                        connected &&
-                                        unresolved?['status'] != 'unknown'
-                                    ? SizedBox(
-                                        width: PircIconSizes.small,
-                                        height: PircIconSizes.small,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth:
-                                              PircLayout.loadingStrokeWidth,
-                                          color: context.pircColors.primary,
-                                          semanticsLabel: context
-                                              .l10n
-                                              .waitingForConfirmation,
-                                        ),
-                                      )
-                                    : Icon(
-                                        running || stopping
-                                            ? LucideIcons.square
-                                            : LucideIcons.arrowUp,
-                                      ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1629,6 +1679,13 @@ class MessageBubble extends StatelessWidget {
   Widget build(BuildContext context) {
     final role = item['role'] as String;
     final text = item['text'] as String;
+    final todoTasks = (item['todo'] as List? ?? [])
+        .cast<Map>()
+        .expand((p) => (p['tasks'] as List).cast<Map>())
+        .toList();
+    final completedTasks = todoTasks
+        .where((t) => t['status'] == 'completed')
+        .length;
     if ((role == 'assistant' || role == 'thinking') &&
         text.isEmpty &&
         (item['images'] as List? ?? []).isEmpty &&
@@ -1693,6 +1750,8 @@ class MessageBubble extends StatelessWidget {
               title: Text(
                 role == 'thinking'
                     ? context.l10n.thinking
+                    : item['todo'] != null
+                    ? '${context.l10n.todoTitle} · $completedTasks/${todoTasks.length}'
                     : context.l10n.toolPhase(
                         item['title']?.toString() ?? context.l10n.tools,
                         phase,
@@ -1704,22 +1763,25 @@ class MessageBubble extends StatelessWidget {
               children: [
                 const Divider(height: PircSpacing.s1),
                 const SizedBox(height: PircSpacing.s12),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxHeight: PircLayout.activityMaxHeight,
-                    ),
-                    child: _StreamingActivityContent(
-                      id: item['id'] as String,
-                      text: text,
-                      arguments: arguments,
-                      complete: complete,
-                      tool: role == 'tool',
-                      truncated: item['truncated'] == true,
+                if (item['todo'] != null)
+                  TodoList(phases: item['todo'] as List)
+                else
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxHeight: PircLayout.activityMaxHeight,
+                      ),
+                      child: _StreamingActivityContent(
+                        id: item['id'] as String,
+                        text: text,
+                        arguments: arguments,
+                        complete: complete,
+                        tool: role == 'tool',
+                        truncated: item['truncated'] == true,
+                      ),
                     ),
                   ),
-                ),
                 if (model != null && instance != null)
                   TranscriptImages(
                     model: model!,

@@ -124,20 +124,90 @@ function stream(
           partial: output,
         });
         output.stopReason = "toolUse";
+      } else if (prompt === "ASK" || prompt === "ASK_LOCAL") {
+        const call = {
+          type: "toolCall" as const,
+          id: randomUUID(),
+          name: "ask",
+          arguments: {
+            questions: [
+              {
+                id: "color",
+                question: "Choose a color",
+                options: [
+                  { label: "Red" },
+                  { label: "Blue", description: "Calm" },
+                ],
+                recommended: 1,
+              },
+              {
+                id: "features",
+                question: "Select features",
+                multi: true,
+                options: [{ label: "Ask" }, { label: "Todo" }],
+              },
+            ],
+          },
+        };
+        if (prompt === "ASK_LOCAL")
+          call.arguments.questions = call.arguments.questions.slice(0, 1);
+        output.content.push(call);
+        output.stopReason = "toolUse";
+        s.push({ type: "toolcall_start", contentIndex: 0, partial: output });
+        s.push({
+          type: "toolcall_end",
+          contentIndex: 0,
+          toolCall: call,
+          partial: output,
+        });
+      } else if (
+        prompt === "TODOTREE" ||
+        (last?.role === "toolResult" &&
+          last.toolName === "todo" &&
+          (last.details as any)?.phases?.[0]?.name === "Design" &&
+          (last.details as any)?.op === "init")
+      ) {
+        const call = {
+          type: "toolCall" as const,
+          id: randomUUID(),
+          name: "todo",
+          arguments:
+            prompt === "TODOTREE"
+              ? {
+                  op: "init",
+                  list: [
+                    {
+                      phase: "Design",
+                      items: [
+                        "Review existing interactions",
+                        "Polish tree layout",
+                      ],
+                    },
+                    {
+                      phase: "Validation",
+                      items: [
+                        "Verify OMP integration",
+                        "Check history restoration",
+                      ],
+                    },
+                  ],
+                }
+              : { op: "done", task: "Review existing interactions" },
+        };
+        output.content.push(call);
+        output.stopReason = "toolUse";
+        s.push({ type: "toolcall_start", contentIndex: 0, partial: output });
+        s.push({
+          type: "toolcall_end",
+          contentIndex: 0,
+          toolCall: call,
+          partial: output,
+        });
       } else if (
         prompt === "TODO" ||
         (last?.role === "toolResult" &&
           last.toolName === "todo" &&
-          !context.messages.some(
-            (m) =>
-              m.role === "assistant" &&
-              m.content.some(
-                (c) =>
-                  c.type === "toolCall" &&
-                  c.name === "todo" &&
-                  c.arguments.op === "done",
-              ),
-          ))
+          (last.details as { op?: string } | undefined)?.op !== "done")
       ) {
         const call = {
           type: "toolCall" as const,
@@ -217,7 +287,13 @@ function stream(
         const block = { type: "text" as const, text: "" };
         output.content.push(block);
         s.push({ type: "text_start", contentIndex: 0, partial: output });
-        const count = prompt.startsWith("SLOW") ? 300 : 2;
+        const count =
+          prompt.startsWith("SLOW") ||
+          (last?.role === "toolResult" &&
+            last.toolName === "todo" &&
+            (last.details as any)?.phases?.[0]?.name === "Design")
+            ? 3000
+            : 2;
         for (let i = 0; i < count; i++) {
           await pause(50, undefined, { signal: options?.signal });
           const delta = i === 0 ? `reply:${prompt || "tool finished"} ` : ".";

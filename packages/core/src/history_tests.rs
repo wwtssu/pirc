@@ -19,6 +19,7 @@ fn snapshot() -> SessionSnapshot {
 }
 fn item(seq: u64, text: &str) -> Item {
     Item {
+        todo: None,
         images: vec![],
         id: format!("user:{seq}"),
         role: "user".into(),
@@ -64,6 +65,7 @@ fn page(
             session_id: "s".into(),
             instance_id: "i".into(),
             items,
+            current_todo: None,
             has_before: before,
             has_after: after,
             last_seq: seq,
@@ -79,6 +81,7 @@ fn event(p: &mut Projection, seq: u64, text: &str) -> Vec<Envelope> {
         seq,
         source_seq: seq,
         event: EventData {
+            todo: None,
             images: vec![],
             kind: EventKind::UserMessage,
             message_id: None,
@@ -273,6 +276,7 @@ fn page_versions_do_not_duplicate_live_deltas_still_queued_on_socket() {
             seq,
             source_seq: seq,
             event: EventData {
+                todo: None,
                 images: vec![],
                 kind: EventKind::MessageDelta,
                 message_id: Some("m".into()),
@@ -336,4 +340,106 @@ fn reconnect_replays_incrementally_without_replacing_the_historical_window() {
     assert_eq!(p.view.sessions[0].items[0].first_seq, 4);
     assert_eq!(p.view.sessions[0].history.anchor, Some(4));
     assert_eq!(p.view.sessions[0].history.revision, revision);
+}
+
+#[test]
+fn current_tasks_survive_history_navigation_and_live_updates() {
+    let mut session = SessionView::new(snapshot());
+    let todo = |content: &str| {
+        vec![TodoPhase {
+            name: "Build".into(),
+            tasks: vec![TodoTask {
+                content: content.into(),
+                status: TodoStatus::InProgress,
+                blocker: None,
+            }],
+        }]
+    };
+    let mut task_event = EventData {
+        kind: EventKind::ToolEnd,
+        todo: Some(todo("Current")),
+        images: vec![],
+        message_id: None,
+        tool_call_id: Some("call".into()),
+        tool_name: Some("todo".into()),
+        content_index: None,
+        text: None,
+        is_error: false,
+        truncated: false,
+    };
+    session.history.has_after = true;
+    session.event(1, 1, task_event.clone());
+    assert!(session.items.is_empty());
+    assert_eq!(
+        session
+            .current_todo
+            .as_ref()
+            .unwrap()
+            .todo
+            .as_ref()
+            .unwrap()[0]
+            .tasks[0]
+            .content,
+        "Current"
+    );
+    task_event.todo = Some(todo("Updated"));
+    session.event(2, 2, task_event);
+    assert_eq!(
+        session.display(false).current_todo.unwrap().todo.unwrap()[0].tasks[0].content,
+        "Updated"
+    );
+    assert!(session.items.is_empty());
+}
+
+#[test]
+fn history_pages_supply_current_tasks_without_rewinding_to_old_task_records() {
+    let mut p = start();
+    let request = p.select("i".into()).remove(0);
+    let make_task = |seq, label: &str| {
+        let mut task = item(seq, "");
+        task.todo = Some(vec![TodoPhase {
+            name: "Build".into(),
+            tasks: vec![TodoTask {
+                content: label.into(),
+                status: TodoStatus::Pending,
+                blocker: None,
+            }],
+        }]);
+        task
+    };
+    p.receive(Envelope::new(
+        &request.request_id,
+        Message::HistoryPage {
+            session_id: "s".into(),
+            instance_id: "i".into(),
+            items: vec![item(9, "latest message")],
+            current_todo: Some(make_task(8, "Latest tasks")),
+            has_before: true,
+            has_after: false,
+            last_seq: 9,
+            source_seq: 9,
+            history_truncated: false,
+        },
+    ));
+    let request = p.history("i", HistoryDirection::Before, Some(9)).unwrap();
+    page(
+        &mut p,
+        &request.request_id,
+        vec![make_task(1, "Old tasks")],
+        false,
+        true,
+        9,
+    );
+    assert_eq!(
+        p.view.sessions[0]
+            .current_todo
+            .as_ref()
+            .unwrap()
+            .todo
+            .as_ref()
+            .unwrap()[0]
+            .tasks[0]
+            .content,
+        "Latest tasks"
+    );
 }

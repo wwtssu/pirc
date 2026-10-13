@@ -15,6 +15,9 @@ import { BuiltinError } from "./errors.ts";
 import type { BuiltinCommand } from "../../packages/protocol/generated/BuiltinCommand.ts";
 import type { SessionControls } from "../../packages/protocol/generated/SessionControls.ts";
 import type { SlashCommand } from "../../packages/protocol/generated/SlashCommand.ts";
+import type { AskRequest } from "../../packages/protocol/generated/AskRequest.ts";
+import type { AskAnswer } from "../../packages/protocol/generated/AskAnswer.ts";
+import type { UiPrompt } from "../../packages/protocol/generated/UiPrompt.ts";
 
 // Both adapters normalize their runtime into this Pi-compatible event contract.
 export type CompanionHost = Pick<
@@ -25,6 +28,8 @@ export interface CompanionOptions {
   agentId: string;
   capabilities: string[];
   promptCommands?: boolean;
+  answerAsk?(id: string, answers: AskAnswer[]): void;
+  toolData?(name: string, result: unknown): Partial<EventData>;
   builtinCommands: SlashCommand[];
   controls(ctx: ExtensionContext, compacting: boolean): SessionControls;
   execute(
@@ -50,6 +55,8 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
   let sourceSeq = 0;
   let generation = "";
   let attention = false;
+  let askRequest: AskRequest | undefined;
+  let localUiPrompt: UiPrompt | undefined;
   let reconnect: ReturnType<typeof setTimeout> | undefined;
   let heartbeat: ReturnType<typeof setInterval> | undefined;
   let stopRequests = new Set<string>();
@@ -200,14 +207,20 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
     if (
       !active ||
       !ctx ||
-      !["stop", "prompt", "builtin", "close_session", "read_image"].includes(
-        m.type,
-      )
+      ![
+        "stop",
+        "prompt",
+        "builtin",
+        "close_session",
+        "read_image",
+        "answer_ask",
+      ].includes(m.type)
     )
       return;
     if (
       m.type !== "stop" &&
       m.type !== "prompt" &&
+      m.type !== "answer_ask" &&
       m.type !== "builtin" &&
       m.type !== "close_session" &&
       m.type !== "read_image"
@@ -319,6 +332,25 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
       state("stopping");
       result(e.request_id, "accepted");
       ctx.abort();
+      return;
+    }
+    if (m.type === "answer_ask") {
+      try {
+        if (session.ui_prompt?.ask?.id !== m.prompt_id || !options.answerAsk)
+          throw new BuiltinError(
+            "STALE_PROMPT",
+            "This question is no longer waiting for an answer.",
+          );
+        options.answerAsk(m.prompt_id, m.answers);
+        result(e.request_id, "completed");
+      } catch (error: any) {
+        result(
+          e.request_id,
+          "rejected",
+          error.code ?? "INVALID_ARGUMENT",
+          error.message,
+        );
+      }
       return;
     }
     if (!idle()) {
@@ -587,6 +619,8 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
     closing = false;
     settled = context.isIdle();
     attention = false;
+    askRequest = undefined;
+    localUiPrompt = undefined;
     syncingHistory = true;
     localCompacting = false;
     session = {
@@ -733,19 +767,25 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
   });
   pi.on("ui_prompt_start", (e) => {
     if (active) {
-      attention = true;
-      session.ui_prompt = { kind: e.kind, title: e.title ?? null };
-      state(session.state);
+      localUiPrompt = { kind: e.kind, title: e.title ?? null };
+      refreshUiPrompt();
     }
   });
   pi.on("ui_prompt_end", () => {
     if (active) {
-      attention = false;
-      session.ui_prompt = undefined;
-      state(session.state);
+      localUiPrompt = undefined;
+      refreshUiPrompt();
       setImmediate(confirmIdle);
     }
   });
+  function refreshUiPrompt() {
+    attention = !!askRequest || !!localUiPrompt;
+    session.ui_prompt = askRequest
+      ? { kind: "ask", title: null, ask: askRequest }
+      : localUiPrompt;
+    state(session.state);
+    snapshot();
+  }
   pi.on("session_before_compact", () => {
     if (!active) return;
     localCompacting = true;
@@ -828,6 +868,7 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
         });
       } else if (message.role === "toolResult")
         append("tool_end", {
+          ...options.toolData?.(message.toolName, message),
           tool_call_id: message.toolCallId,
           tool_name: message.toolName,
           text: text(message.content),
@@ -1005,6 +1046,7 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
   pi.on("tool_execution_update", (e) => {
     if (active)
       event("tool_update", {
+        ...options.toolData?.(e.toolName, e.partialResult),
         tool_call_id: e.toolCallId,
         tool_name: e.toolName,
         // Partial results contain cumulative output, not append-only chunks.
@@ -1015,6 +1057,7 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
   pi.on("tool_execution_end", (e) => {
     if (active)
       event("tool_end", {
+        ...options.toolData?.(e.toolName, e.result),
         tool_call_id: e.toolCallId,
         tool_name: e.toolName,
         text: text(e.result?.content),
@@ -1022,4 +1065,11 @@ export function createCompanion(pi: CompanionHost, options: CompanionOptions) {
         is_error: e.isError,
       });
   });
+  return {
+    setAsk(ask: AskRequest | undefined) {
+      if (!active) return;
+      askRequest = ask;
+      refreshUiPrompt();
+    },
+  };
 }

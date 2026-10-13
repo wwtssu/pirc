@@ -18,12 +18,14 @@ class TranscriptList extends StatefulWidget {
     required this.items,
     required this.itemBuilder,
     required this.empty,
+    this.bottomOverlap = 0,
   });
   final PircController model;
   final SessionView session;
   final List<Map<String, dynamic>> items;
   final Widget Function(Map<String, dynamic>) itemBuilder;
   final Widget empty;
+  final double bottomOverlap;
   @override
   State<TranscriptList> createState() => TranscriptListState();
 }
@@ -407,66 +409,85 @@ class TranscriptListState extends State<TranscriptList> {
         : widget.items.indexWhere((i) => i['id'] == boundary) + 1;
     final older = widget.items.take(split).toList().reversed.toList();
     final newer = widget.items.skip(split).toList();
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: NotificationListener<ScrollMetricsNotification>(
-            onNotification: (notification) {
-              if (notification.depth == 0) schedulePagination();
-              return false;
-            },
-            child: SelectionArea(
-              onSelectionChanged: (content) {
-                selecting = content != null && content.plainText.isNotEmpty;
-              },
-              child: RepaintBoundary(
-                key: viewport,
-                child: CustomScrollView(
-                  key: const Key('transcript'),
-                  controller: scroll,
-                  center: centerKey,
-                  anchor: anchor,
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: SelectionContainer.disabled(
-                        child: edge(before: true),
-                      ),
+    // Extend painting beneath the rounded leading edge of the task dock. The
+    // scroll anchor and controls stay within the unobstructed reading area.
+    return LayoutBuilder(
+      builder: (context, constraints) => OverflowBox(
+        alignment: Alignment.topCenter,
+        minHeight: constraints.maxHeight + widget.bottomOverlap,
+        maxHeight: constraints.maxHeight + widget.bottomOverlap,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: NotificationListener<ScrollMetricsNotification>(
+                onNotification: (notification) {
+                  if (notification.depth == 0) schedulePagination();
+                  return false;
+                },
+                child: SelectionArea(
+                  onSelectionChanged: (content) {
+                    selecting = content != null && content.plainText.isNotEmpty;
+                  },
+                  child: RepaintBoundary(
+                    key: viewport,
+                    child: CustomScrollView(
+                      key: const Key('transcript'),
+                      controller: scroll,
+                      center: centerKey,
+                      anchor:
+                          anchor *
+                          constraints.maxHeight /
+                          (constraints.maxHeight + widget.bottomOverlap).clamp(
+                            1.0,
+                            double.infinity,
+                          ),
+                      slivers: [
+                        SliverToBoxAdapter(
+                          child: SelectionContainer.disabled(
+                            child: edge(before: true),
+                          ),
+                        ),
+                        blocks(older),
+                        const SliverToBoxAdapter(
+                          key: centerKey,
+                          child: SizedBox.shrink(),
+                        ),
+                        blocks(newer),
+                        SliverToBoxAdapter(
+                          child:
+                              session.hasAfter ||
+                                  session.historyLoading == 'after'
+                              ? SelectionContainer.disabled(
+                                  child: edge(before: false),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
+                        SliverToBoxAdapter(
+                          child: SizedBox(height: widget.bottomOverlap),
+                        ),
+                      ],
                     ),
-                    blocks(older),
-                    const SliverToBoxAdapter(
-                      key: centerKey,
-                      child: SizedBox.shrink(),
-                    ),
-                    blocks(newer),
-                    SliverToBoxAdapter(
-                      child:
-                          session.hasAfter || session.historyLoading == 'after'
-                          ? SelectionContainer.disabled(
-                              child: edge(before: false),
-                            )
-                          : const SizedBox.shrink(),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
-        ),
-        if (!pinned || session.hasAfter || newContent)
-          Positioned(
-            bottom: PircSpacing.s12,
-            right: PircSpacing.s20,
-            child: IconButton.filledTonal(
-              key: const Key('jump-to-latest'),
-              onPressed: showLatest,
-              tooltip: context.l10n.jumpToLatest,
-              icon: const Icon(
-                LucideIcons.arrowDown,
-                size: PircIconSizes.small,
+            if (!pinned || session.hasAfter || newContent)
+              Positioned(
+                bottom: PircSpacing.s12 + widget.bottomOverlap,
+                right: PircSpacing.s20,
+                child: IconButton.filledTonal(
+                  key: const Key('jump-to-latest'),
+                  onPressed: showLatest,
+                  tooltip: context.l10n.jumpToLatest,
+                  icon: const Icon(
+                    LucideIcons.arrowDown,
+                    size: PircIconSizes.small,
+                  ),
+                ),
               ),
-            ),
-          ),
-      ],
+          ],
+        ),
+      ),
     );
   }
 }
