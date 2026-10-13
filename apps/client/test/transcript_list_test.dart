@@ -112,6 +112,103 @@ Future<void> close(WidgetTester tester, PagedController model) async {
 }
 
 void main() {
+  for (final streaming in [false, true]) {
+    testWidgets(
+      'iOS release inertia keeps long reply in view, streaming=$streaming',
+      (tester) async {
+        debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+        addTearDown(() => debugDefaultTargetPlatformOverride = null);
+        tester.view.physicalSize = const Size(390, 844);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.resetPhysicalSize);
+        addTearDown(tester.view.resetDevicePixelRatio);
+        final model = PagedController()
+          ..applyDecodedView(
+            data([
+              ...items(0, 8),
+              {
+                'id': 'long-answer',
+                'role': 'assistant',
+                'text': List.generate(
+                  55,
+                  (i) =>
+                      'Section $i\n\nLong reply paragraph with enough text to wrap across several lines on a phone.',
+                ).join('\n\n'),
+                'complete': true,
+                'first_seq': 9,
+                'last_seq': 9,
+              },
+            ], seq: 9),
+          );
+        await open(tester, model);
+        await tester.pumpAndSettle();
+        position(tester).jumpTo(position(tester).minScrollExtent);
+        await tester.pumpAndSettle();
+        await tester.fling(
+          find.byKey(const Key('transcript')),
+          const Offset(0, -350),
+          1400,
+        );
+        double? previous;
+        double largestJump = 0;
+        var sawReply = false;
+        final reply = find.byKey(const ValueKey<dynamic>('long-answer'));
+        for (var frame = 0; frame < 200; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          if (streaming && frame == 15) {
+            final updated = data([
+              ...items(0, 8),
+              {
+                'id': 'long-answer',
+                'role': 'assistant',
+                'text': List.generate(
+                  85,
+                  (i) =>
+                      'Section $i\n\nLong reply paragraph with enough text to wrap across several lines on a phone.',
+                ).join('\n\n'),
+                'complete': false,
+                'first_seq': 9,
+                'last_seq': 10,
+              },
+            ], seq: 10);
+            updated['sessions'][0]['snapshot']['state'] = 'running';
+            model.applyDecodedView(updated);
+          }
+          if (reply.evaluate().isNotEmpty) {
+            final rect = tester.getRect(reply);
+            final viewport = tester.getRect(
+              find.byKey(const Key('transcript')),
+            );
+            if (rect.overlaps(viewport)) {
+              sawReply = true;
+            }
+            if (previous != null) {
+              largestJump = (rect.top - previous).abs() > largestJump
+                  ? (rect.top - previous).abs()
+                  : largestJump;
+            }
+            previous = rect.top;
+          }
+        }
+        expect(sawReply, isTrue);
+        expect(
+          largestJump,
+          lessThan(80),
+          reason: 'Inertia must not reuse pixels from the old sliver origin',
+        );
+        expect(reply, findsOneWidget);
+        expect(
+          tester
+              .getRect(reply)
+              .overlaps(tester.getRect(find.byKey(const Key('transcript')))),
+          isTrue,
+        );
+        expect(tester.takeException(), isNull);
+        await close(tester, model);
+        debugDefaultTargetPlatformOverride = null;
+      },
+    );
+  }
   testWidgets(
     'task dock overlaps transcript painting but leaves latest message and jump control clear',
     (tester) async {

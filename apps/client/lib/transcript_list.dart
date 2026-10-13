@@ -9,6 +9,64 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'pirc_controller.dart';
 import 'pirc_theme.dart';
 
+/// Rebasing a sliver must also translate the coordinates of its active physics
+/// simulation. Drag updates read current pixels, but ballistic ticks still use
+/// the origin captured when the pointer was released.
+class _TranscriptScrollController extends ScrollController {
+  _TranscriptScrollController({
+    super.keepScrollOffset,
+    super.onAttach,
+    super.onDetach,
+  });
+
+  @override
+  ScrollPosition createScrollPosition(
+    ScrollPhysics physics,
+    ScrollContext context,
+    ScrollPosition? oldPosition,
+  ) => _TranscriptScrollPosition(
+    physics: physics,
+    context: context,
+    initialPixels: initialScrollOffset,
+    keepScrollOffset: keepScrollOffset,
+    oldPosition: oldPosition,
+    debugLabel: debugLabel,
+  );
+}
+
+class _TranscriptScrollPosition extends ScrollPositionWithSingleContext {
+  _TranscriptScrollPosition({
+    required super.physics,
+    required super.context,
+    super.initialPixels,
+    super.keepScrollOffset,
+    super.oldPosition,
+    super.debugLabel,
+  });
+  double _ballisticShift = 0;
+
+  @override
+  void beginActivity(ScrollActivity? newActivity) {
+    if (newActivity != null && !identical(activity, newActivity)) {
+      _ballisticShift = 0;
+    }
+    super.beginActivity(newActivity);
+  }
+
+  @override
+  void correctPixels(double value) {
+    if (activity is BallisticScrollActivity) _ballisticShift += value - pixels;
+    super.correctPixels(value);
+  }
+
+  @override
+  double setPixels(double newPixels) => super.setPixels(
+    activity is BallisticScrollActivity
+        ? newPixels + _ballisticShift
+        : newPixels,
+  );
+}
+
 /// Older pages grow upward from this boundary without measuring their heights.
 class TranscriptList extends StatefulWidget {
   const TranscriptList({
@@ -31,7 +89,7 @@ class TranscriptList extends StatefulWidget {
 }
 
 class TranscriptListState extends State<TranscriptList> {
-  late final scroll = ScrollController(
+  late final scroll = _TranscriptScrollController(
     keepScrollOffset: false,
     onAttach: (position) =>
         position.isScrollingNotifier.addListener(onActivityChanged),
