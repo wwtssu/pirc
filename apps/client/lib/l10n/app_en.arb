@@ -491,5 +491,10 @@
   "todoPending": "Pending",
   "todoInProgress": "In progress",
   "todoBlocked": "Blocked",
-  "todoAbandoned": "Abandoned"
+  "todoAbandoned": "Abandoned",
+  "modelRoles": "Model roles",
+  "currentSessionModel": "Current session",
+  "otherModelTypes": "Other model types",
+  "roleUnassigned": "Not assigned",
+  "useRoleDefault": "Use default assignment"
 }

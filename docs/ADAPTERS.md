@@ -59,3 +59,10 @@ range; live task updates continue while older messages are visible.
 
 Pi and OMP adapters are implemented. See [OMP adapter](../extensions/omp/README.md) for its API mapping and validation. Additional adapters must preserve
 the shared identity, acknowledgement, replay, and history semantics.
+
+Model catalogs may include `roles`: native role IDs, model-kind categories,
+configured selectors, resolved models, and configuration sources. The `model`
+control accepts structured `role_models`, `set_role`, and `clear_role` operations
+for these adapters. Candidate filtering and persistence belong to the adapter;
+clients must not infer a model role from its display name. Adapters without roles
+continue to provide a flat catalog.

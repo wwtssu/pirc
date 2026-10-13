@@ -234,6 +234,98 @@ try {
   let result = await builtin(s, "model");
   assert(result.data.models.some((m) => m.id === "fixture-large"));
   note("model catalog and current model");
+  assert(result.data.roles.some((r) => r.id === "default"));
+  assert(result.data.roles.some((r) => r.id === "task"));
+  assert(
+    result.data.roles.some((r) => r.id === "image" && r.category === "kind"),
+  );
+  s = await idle(iid);
+  const currentBeforeRoleEdit = s.controls.model.id;
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({ op: "role_models", role: "image" }),
+  );
+  assert(
+    result.data.models.some(
+      (m) => m.provider === "pirc-test-image" && m.id === "fixture-image",
+    ),
+  );
+  assert(!result.data.models.some((m) => m.id === "controlled"));
+  s = await idle(iid);
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({
+      op: "set_role",
+      role: "image",
+      selector: "pirc-test-image/fixture-image",
+    }),
+  );
+  assert.equal(
+    result.data.roles.find((r) => r.id === "image").resolved.id,
+    "fixture-image",
+  );
+  s = await idle(iid);
+  assert.equal(s.controls.model.id, currentBeforeRoleEdit);
+  await builtin(
+    s,
+    "model",
+    JSON.stringify({ op: "clear_role", role: "image" }),
+  );
+  s = await idle(iid);
+
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({ op: "role_models", role: "task" }),
+  );
+  assert(result.data.models.some((m) => m.id === "fixture-large"));
+  s = await idle(iid);
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({
+      op: "set_role",
+      role: "task",
+      selector: "pirc-test/fixture-large",
+    }),
+  );
+  assert.equal(result.status, "completed");
+  assert.equal(
+    result.data.roles.find((r) => r.id === "task").selector,
+    "pirc-test/fixture-large",
+  );
+  s = await idle(iid);
+  assert.equal(s.controls.model.id, currentBeforeRoleEdit);
+  assert(
+    readFileSync(join(agent, "config.yml"), "utf8").includes(
+      "pirc-test/fixture-large",
+    ),
+  );
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({
+      op: "set_role",
+      role: "image",
+      selector: "pirc-test/fixture-large",
+    }),
+    "rejected",
+  );
+  assert.equal(result.status, "rejected");
+  s = await idle(iid);
+  result = await builtin(
+    s,
+    "model",
+    JSON.stringify({ op: "clear_role", role: "task" }),
+  );
+  assert.equal(result.status, "completed");
+  assert.equal(result.data.roles.find((r) => r.id === "task").selector, null);
+  note(
+    "native model roles list, assignment, type validation and reset without switching current model",
+  );
+
   s = await idle(iid);
   await builtin(s, "model", "@slow");
   s = await idle(iid);

@@ -1,4 +1,5 @@
 import 'package:pirc/agent_interactions.dart';
+import 'package:pirc/builtin_command_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
@@ -54,6 +55,43 @@ void main() {
         expect(model.selected!.currentModel?['id'], 'fixture-large');
         expect(find.text('Renamed OMP'), findsOneWidget);
         await tester.tap(find.byKey(const Key('session-model')));
+        await wait(
+          () =>
+              find.byKey(const Key('model-role-current')).evaluate().isNotEmpty,
+          'OMP role overview uses the existing bottom sheet',
+        );
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.scrollUntilVisible(
+          find.byKey(const ValueKey('model-role-task')),
+          180,
+          scrollable: find
+              .descendant(
+                of: find.byType(BuiltinCommandSheet),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
+        await tester.tap(find.byKey(const ValueKey('model-role-task')));
+        await wait(
+          () => find
+              .byKey(const ValueKey('model-pirc-test/controlled'))
+              .evaluate()
+              .isNotEmpty,
+          'OMP role candidates load',
+        );
+        await tester.pump(const Duration(milliseconds: 400));
+        await tester.tap(
+          find.byKey(const ValueKey('model-pirc-test/controlled')),
+        );
+        await wait(
+          () =>
+              find.byKey(const Key('model-role-current')).evaluate().isNotEmpty,
+          'OMP task assignment returns to the role overview',
+        );
+        expect(model.selected!.currentModel?['id'], 'fixture-large');
+        await tester.ensureVisible(find.byKey(const Key('model-role-current')));
+        await tester.tap(find.byKey(const Key('model-role-current')));
+
         await wait(
           () => find
               .byKey(const ValueKey('model-pirc-test/controlled'))
@@ -147,7 +185,20 @@ void main() {
         );
         FocusManager.instance.primaryFocus?.unfocus();
         await tester.pump(const Duration(milliseconds: 400));
-        await tester.ensureVisible(find.byKey(const Key('submit-ask')));
+        expect(
+          (model.selected!.snapshot['ui_prompt'] as Map?)?['ask'],
+          isNotNull,
+        );
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('submit-ask')),
+          160,
+          scrollable: find
+              .descendant(
+                of: find.byKey(const Key('transcript')),
+                matching: find.byType(Scrollable),
+              )
+              .first,
+        );
         await tester.pump(const Duration(milliseconds: 200));
         await tester.tap(find.byKey(const Key('submit-ask')));
         await wait(

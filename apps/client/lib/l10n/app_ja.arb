@@ -382,5 +382,10 @@
   "todoPending": "未着手",
   "todoInProgress": "進行中",
   "todoBlocked": "保留",
-  "todoAbandoned": "中止"
+  "todoAbandoned": "中止",
+  "modelRoles": "モデルの用途",
+  "currentSessionModel": "現在のセッション",
+  "otherModelTypes": "その他のモデルタイプ",
+  "roleUnassigned": "未割り当て",
+  "useRoleDefault": "デフォルトの割り当てを使用"
 }

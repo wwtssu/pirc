@@ -200,6 +200,15 @@
                 "$ref": "#/$defs/ModelInfo"
               },
               "type": "array"
+            },
+            "roles": {
+              "items": {
+                "$ref": "#/$defs/ModelRoleInfo"
+              },
+              "type": [
+                "array",
+                "null"
+              ]
             }
           },
           "required": [
@@ -1536,6 +1545,42 @@
         "name",
         "reasoning",
         "context_window"
+      ],
+      "type": "object"
+    },
+    "ModelRoleInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "category": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "resolved": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ModelInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selector": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "category",
+        "source"
       ],
       "type": "object"
     },

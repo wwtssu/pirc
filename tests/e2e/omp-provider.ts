@@ -362,6 +362,23 @@ export default function (pi: ExtensionAPI) {
     ],
     streamSimple: stream,
   });
+  pi.registerProvider("pirc-test-image", {
+    baseUrl: "http://127.0.0.1",
+    apiKey: "test-only",
+    api: "openai-images",
+    models: [
+      {
+        id: "fixture-image",
+        name: "Image fixture",
+        kind: "image",
+        reasoning: false,
+        input: ["text", "image"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow: 1000,
+        maxTokens: 1000,
+      },
+    ],
+  });
   pi.registerTool({
     name: "e2e_file",
     label: "File fixture",

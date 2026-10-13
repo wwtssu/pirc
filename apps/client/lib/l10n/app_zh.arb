@@ -382,5 +382,10 @@
   "todoPending": "待处理",
   "todoInProgress": "进行中",
   "todoBlocked": "受阻",
-  "todoAbandoned": "已放弃"
+  "todoAbandoned": "已放弃",
+  "modelRoles": "模型用途",
+  "currentSessionModel": "当前会话",
+  "otherModelTypes": "其他模型类型",
+  "roleUnassigned": "未分配",
+  "useRoleDefault": "使用默认分配"
 }

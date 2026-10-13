@@ -6,6 +6,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'pirc_controller.dart';
 import 'pirc_theme.dart';
 
+import 'dart:convert';
+
 const builtinNames = {'model', 'thinking', 'name', 'session', 'compact'};
 const builtinTitles = {
   'model': 'Select model',
@@ -87,10 +89,12 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
   late final Map<String, dynamic> data;
   String? error;
   bool saving = false;
+  Map? selectedRole;
+  bool loadingRole = false;
   @override
   void initState() {
     super.initState();
-    data = widget.initialData;
+    data = Map<String, dynamic>.of(widget.initialData);
     name.text = data['name'] as String? ?? '';
   }
 
@@ -123,16 +127,110 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
     }
   }
 
+  Future<void> openRole(Map role) async {
+    if (saving || loadingRole) return;
+    setState(() {
+      loadingRole = true;
+      error = null;
+    });
+    try {
+      final result = await widget.model.runBuiltin(
+        widget.session,
+        'model',
+        role['id'] == 'current_session'
+            ? ''
+            : jsonEncode({'op': 'role_models', 'role': role['id']}),
+      );
+      if (mounted) {
+        setState(() {
+          data.clear();
+          data.addAll(result);
+          selectedRole =
+              (result['roles'] as List?)
+                  ?.cast<Map>()
+                  .where((r) => r['id'] == role['id'])
+                  .firstOrNull ??
+              role;
+          search.clear();
+        });
+      }
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error = '$failure'.replaceFirst('Bad state: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => loadingRole = false);
+    }
+  }
+
+  Future<void> saveRole(String? selector) async {
+    if (saving || selectedRole == null) return;
+    if (selectedRole!['id'] == 'current_session') {
+      if (selector != null) await save(selector);
+      return;
+    }
+    setState(() {
+      saving = true;
+      error = null;
+    });
+    try {
+      final result = await widget.model.runBuiltin(
+        widget.session,
+        'model',
+        jsonEncode({
+          'op': selector == null ? 'clear_role' : 'set_role',
+          'role': selectedRole!['id'],
+          'selector': ?selector,
+        }),
+      );
+      if (mounted) {
+        setState(() {
+          data.clear();
+          data.addAll(result);
+          selectedRole = null;
+          search.clear();
+        });
+      }
+    } catch (failure) {
+      if (mounted) {
+        setState(() => error = '$failure'.replaceFirst('Bad state: ', ''));
+      }
+    } finally {
+      if (mounted) setState(() => saving = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final nameEditor = widget.command == 'name';
     final selector = {'model', 'thinking'}.contains(widget.command);
-    final compact = nameEditor || selector;
+    final roleCatalog = widget.command == 'model' && data['roles'] != null;
+    final compact =
+        nameEditor || selector && (!roleCatalog || selectedRole != null);
     final header = Row(
       children: [
+        if (selectedRole != null)
+          IconButton(
+            key: const Key('model-role-back'),
+            tooltip: context.l10n.back,
+            onPressed: saving
+                ? null
+                : () => setState(() {
+                    selectedRole = null;
+                    search.clear();
+                    error = null;
+                  }),
+            icon: const Icon(LucideIcons.arrowLeft),
+          ),
         Expanded(
           child: Text(
-            context.localize(builtinTitles[widget.command]!),
+            selectedRole != null
+                ? (selectedRole!['id'] == 'current_session'
+                      ? context.l10n.currentSessionModel
+                      : selectedRole!['id'] as String)
+                : roleCatalog
+                ? context.l10n.modelRoles
+                : context.localize(builtinTitles[widget.command]!),
             style: context.pircText.cardTitle,
           ),
         ),
@@ -155,7 +253,7 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
-          if (saving) const LinearProgressIndicator(),
+          if (saving || loadingRole) const LinearProgressIndicator(),
           if (error != null)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: PircSpacing.s12),
@@ -218,7 +316,75 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
   List<Widget> content(BuildContext context) {
     switch (widget.command) {
       case 'model':
-        final current = data['current'] as Map?;
+        final roles = data['roles'] as List?;
+        if (roles != null && selectedRole == null) {
+          return [
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                children: [
+                  ListTile(
+                    key: const Key('model-role-current'),
+                    title: Text(
+                      context.l10n.currentSessionModel,
+                      style: context.pircText.body,
+                    ),
+                    subtitle: Text(
+                      (data['current'] as Map?)?['name'] as String? ??
+                          context.l10n.noModelsAvailable,
+                      style: context.pircText.path,
+                    ),
+                    trailing: const Icon(LucideIcons.chevronRight),
+                    onTap: saving || loadingRole
+                        ? null
+                        : () => openRole({'id': 'current_session'}),
+                  ),
+                  const Divider(),
+                  for (final category in ['chat', 'kind']) ...[
+                    if (roles.any((r) => r['category'] == category))
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: PircSpacing.s16,
+                          vertical: PircSpacing.s8,
+                        ),
+                        child: Text(
+                          category == 'chat'
+                              ? context.l10n.modelRoles
+                              : context.l10n.otherModelTypes,
+                          style: context.pircText.hint,
+                        ),
+                      ),
+                    for (final role in roles.cast<Map>().where(
+                      (r) => r['category'] == category,
+                    ))
+                      ListTile(
+                        key: ValueKey('model-role-${role['id']}'),
+                        title: Text(
+                          role['id'] as String,
+                          style: context.pircText.body,
+                        ),
+                        subtitle: Text(
+                          role['selector'] as String? ??
+                              (role['resolved'] as Map?)?['name'] as String? ??
+                              context.l10n.roleUnassigned,
+                          style: context.pircText.path,
+                        ),
+                        trailing: const Icon(LucideIcons.chevronRight),
+                        onTap: saving || loadingRole
+                            ? null
+                            : () => openRole(role),
+                      ),
+                  ],
+                ],
+              ),
+            ),
+          ];
+        }
+        final current =
+            selectedRole != null && selectedRole!['id'] != 'current_session'
+            ? selectedRole!['resolved'] as Map?
+            : data['current'] as Map?;
         final models = (data['models'] as List).cast<Map>();
         final query = search.text.trim().toLowerCase();
         final visible = models
@@ -229,6 +395,15 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
             )
             .toList();
         return [
+          if (selectedRole != null && selectedRole!['id'] != 'current_session')
+            ListTile(
+              key: const Key('reset-model-role'),
+              title: Text(
+                context.l10n.useRoleDefault,
+                style: context.pircText.body,
+              ),
+              onTap: saving ? null : () => saveRole(null),
+            ),
           TextField(
             key: const Key('model-search'),
             controller: search,
@@ -282,7 +457,9 @@ class _BuiltinCommandSheetState extends State<BuiltinCommandSheet> {
                             : null,
                         onTap: saving
                             ? null
-                            : () => save('${m['provider']}/${m['id']}'),
+                            : () => selectedRole == null
+                                  ? save('${m['provider']}/${m['id']}')
+                                  : saveRole('${m['provider']}/${m['id']}'),
                       );
                     },
                   ),

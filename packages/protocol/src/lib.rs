@@ -63,6 +63,15 @@ pub struct ModelInfo {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
 #[serde(deny_unknown_fields)]
+pub struct ModelRoleInfo {
+    pub id: String,
+    pub category: String,
+    pub selector: Option<String>,
+    pub resolved: Option<ModelInfo>,
+    pub source: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema, TS)]
+#[serde(deny_unknown_fields)]
 pub struct SessionControls {
     pub model: Option<ModelInfo>,
     pub thinking_level: String,
@@ -106,6 +115,9 @@ pub enum CommandData {
     Model {
         current: Option<ModelInfo>,
         models: Vec<ModelInfo>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        roles: Option<Vec<ModelRoleInfo>>,
     },
     Thinking {
         level: String,

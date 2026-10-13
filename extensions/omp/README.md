@@ -24,9 +24,9 @@ Connection configuration follows the same loopback settings as the Pi adapter.
 - Session creation, naming, restoration, and managed terminal exit.
 - Text, thinking, tool-call arguments, and cumulative tool-result streaming.
 - Stop confirmation and subsequent prompts in the same session.
-- Model selection through OMP's native model resolver, including role aliases
-  that resolve to the selected primary model. Separate role configuration is not
-  exposed by the client.
+- Model selection through OMP's native resolver and role overview, including
+  configured custom roles. Assignments and resets use native settings and respect
+  project/global storage. Non-default edits leave the active session model intact.
 - Thinking levels taken from the current model's declared effort metadata.
 - `/name`, `/session`, and `/compact`, including asynchronous naming and
   confirmed compaction results or errors.

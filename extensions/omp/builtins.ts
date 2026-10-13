@@ -6,13 +6,14 @@ import type { SessionControls } from "../../packages/protocol/generated/SessionC
 import { BuiltinError } from "../shared/errors.ts";
 import { builtinCommands } from "../shared/commands.ts";
 export { builtinCommands };
+import { executeRole, modelRoles } from "./model-roles.ts";
 
 export function modelInfo(model: Model) {
   return {
     provider: model.provider,
     id: model.id,
     name: model.name,
-    reasoning: model.reasoning,
+    reasoning: model.reasoning === true,
     context_window: model.contextWindow ?? 0,
   };
 }
@@ -99,6 +100,8 @@ export async function executeBuiltin(
   const args = raw.trim();
   switch (command) {
     case "model": {
+      if (args.startsWith("{")) return executeRole(api, ctx, args);
+      const roles = await modelRoles(api, ctx);
       if (args) {
         // OMP resolves provider IDs, fuzzy names and configured role aliases.
         const model = ctx.models.resolve(args);
@@ -116,6 +119,7 @@ export async function executeBuiltin(
       const current = ctx.models.current();
       return {
         kind: "model",
+        ...(roles ? { roles } : {}),
         current: current ? modelInfo(current) : null,
         models: args
           ? []

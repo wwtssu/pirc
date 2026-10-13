@@ -1,6 +1,7 @@
 import 'package:pirc/pirc_localizations.dart';
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -24,6 +25,59 @@ class BuiltinController extends PircController {
     if (args.isEmpty) return query.future;
     if (failure != null) throw StateError(failure!);
     return {'kind': command};
+  }
+}
+
+class RoleController extends BuiltinController {
+  String? taskSelector;
+  final catalogModels = [
+    {'provider': 'test', 'id': 'first', 'name': 'First model'},
+    {'provider': 'test', 'id': 'second', 'name': 'Second model'},
+  ];
+  Map<String, dynamic> get catalog => {
+    'kind': 'model',
+    'current': catalogModels.first,
+    'models': catalogModels,
+    'roles': [
+      {
+        'id': 'default',
+        'category': 'chat',
+        'selector': 'test/first',
+        'resolved': catalogModels.first,
+        'source': 'global',
+      },
+      {
+        'id': 'task',
+        'category': 'chat',
+        'selector': taskSelector,
+        'resolved': taskSelector == 'test/second'
+            ? catalogModels.last
+            : catalogModels.first,
+        'source': 'global',
+      },
+      {
+        'id': 'image',
+        'category': 'kind',
+        'selector': null,
+        'resolved': null,
+        'source': 'default',
+      },
+    ],
+  };
+  @override
+  Future<Map<String, dynamic>> runBuiltin(
+    SessionView session,
+    String command, [
+    String args = '',
+  ]) async {
+    if (args.isEmpty) return super.runBuiltin(session, command, args);
+    calls.add((command, args));
+    final request = jsonDecode(args) as Map;
+    if (request['op'] == 'set_role') {
+      taskSelector = request['selector'] as String;
+    }
+    if (request['op'] == 'clear_role') taskSelector = null;
+    return catalog;
   }
 }
 
@@ -96,6 +150,42 @@ Future<void> sheet(
 }
 
 void main() {
+  for (final width in [320.0, 390.0]) {
+    testWidgets(
+      'role overview edits and resets assignments without closing the sheet at $width',
+      (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 760));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final model = RoleController();
+        await sheet(tester, model, 'model');
+        model.query.complete(model.catalog);
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('model-role-current')), findsOneWidget);
+        expect(find.byKey(const ValueKey('model-role-image')), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('model-role-task')));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byKey(const Key('model-search')), 'Second');
+        await tester.pumpAndSettle();
+        expect(find.byKey(const ValueKey('model-test/first')), findsNothing);
+        await tester.tap(find.byKey(const ValueKey('model-test/second')));
+        await tester.pumpAndSettle();
+        expect(model.taskSelector, 'test/second');
+        expect(find.byKey(const ValueKey('model-role-task')), findsOneWidget);
+        expect(find.byKey(const Key('model-role-current')), findsOneWidget);
+        expect(find.text('First model'), findsOneWidget);
+        await tester.tap(find.byKey(const ValueKey('model-role-task')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('reset-model-role')));
+        await tester.pumpAndSettle();
+        expect(model.taskSelector, isNull);
+        expect(find.byKey(const ValueKey('model-role-task')), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        await tester.pumpWidget(const SizedBox());
+        model.dispose();
+      },
+    );
+  }
+
   testWidgets('unsupported settings are hidden and reasoning can stand alone', (
     tester,
   ) async {
