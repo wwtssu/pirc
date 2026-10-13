@@ -16,10 +16,12 @@ Map<String, dynamic> session(
   String id,
   String name,
   String cwd, {
+  String agentId = 'pi',
   List<Map<String, dynamic>> items = const [],
+  List<Map<String, dynamic>>? tasks,
 }) => {
   'snapshot': {
-    'agent_id': 'pi',
+    'agent_id': agentId,
     'session_id': id,
     'instance_id': id,
     'cwd': cwd,
@@ -44,6 +46,7 @@ Map<String, dynamic> session(
   'ready': true,
   'gaps': [],
   'items': items,
+  if (tasks != null) 'current_todo': {'todo': tasks},
 };
 
 void main() {
@@ -63,6 +66,20 @@ void main() {
             'api',
             'Refactor API client',
             '/workspace/atlas',
+            agentId: 'omp',
+            tasks: [
+              {
+                'name': 'Refactor',
+                'tasks': [
+                  {'content': 'Review request helpers', 'status': 'completed'},
+                  {
+                    'content': 'Run focused tests',
+                    'status': 'completed',
+                  },
+                  {'content': 'Review changes', 'status': 'pending'},
+                ],
+              },
+            ],
             items: [
               {
                 'id': 'question',
@@ -94,7 +111,12 @@ void main() {
             ],
           ),
           session('docs', 'Update documentation', '/workspace/docs'),
-          session('release', 'Prepare a release', '/workspace/cli'),
+          session(
+            'release',
+            'Prepare a release',
+            '/workspace/cli',
+            agentId: 'omp',
+          ),
         ],
       });
     final devices = ComputerConnections(initialController: controller);

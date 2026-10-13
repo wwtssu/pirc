@@ -4,7 +4,7 @@ PiRC is a remote client for Pi and Oh My Pi (OMP), with support for multiple dev
 
 <p>
   <img src="docs/images/client-sessions-en.png" alt="PiRC session list in English" width="280">
-  <img src="docs/images/client-conversation-en.png" alt="PiRC session with thinking, tool output, and Markdown in English" width="280">
+  <img src="docs/images/client-conversation-en.png" alt="PiRC session with Markdown, tool output, and persistent tasks in English" width="280">
 </p>
 
 ## Project structure
