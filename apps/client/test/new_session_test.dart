@@ -407,101 +407,114 @@ void main() {
       model.dispose();
     },
   );
-  testWidgets(
-    'creation name can be cancelled and submitted with the keyboard',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(320, 650));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      final model = CreationController()..applyDecodedView(view('idle'));
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('en'),
-          theme: pircTheme(),
-          home: NewSessionPage(model: model),
-        ),
-      );
-      model.catalog.complete(
-        SavedSessionCatalog(
-          agents: const [
-            AgentInfo(id: 'pi', name: 'Pi'),
-            AgentInfo(id: 'other', name: 'Other agent'),
-          ],
-          sessions: [],
-          defaultCwd: '/tmp/project',
-        ),
-      );
-      await tester.pumpAndSettle();
+  for (final width in [320.0, 390.0, 600.0]) {
+    testWidgets(
+      'creation menu fits its anchor and preserves layout at $width',
+      (tester) async {
+        await tester.binding.setSurfaceSize(Size(width, 650));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        final model = CreationController()..applyDecodedView(view('idle'));
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: const Locale('en'),
+            theme: pircTheme(),
+            home: NewSessionPage(model: model),
+          ),
+        );
+        model.catalog.complete(
+          SavedSessionCatalog(
+            agents: const [
+              AgentInfo(id: 'pi', name: 'Pi'),
+              AgentInfo(id: 'other', name: 'Other agent'),
+            ],
+            sessions: [],
+            defaultCwd: '/tmp/project',
+          ),
+        );
+        await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('launch-new-session')));
-      await tester.pumpAndSettle();
-      expect(
-        find.byKey(const Key('create-session-name-dialog')),
-        findsOneWidget,
-      );
-      expect(find.textContaining('/256'), findsNothing);
-      expect(model.calls, isEmpty);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(model.calls, isEmpty);
-      await tester.tap(find.byKey(const Key('launch-new-session')));
-      await tester.pumpAndSettle();
-      expect(
-        tester.getTopLeft(find.byKey(const Key('create-session-agent'))).dy,
-        greaterThan(
-          tester.getBottomLeft(find.byKey(const Key('create-session-name'))).dy,
-        ),
-      );
-      final dialogBefore = tester.getRect(
-        find.byKey(const Key('create-session-name-dialog')),
-      );
-      final nameBefore = tester.getRect(
-        find.byKey(const Key('create-session-name')),
-      );
-      final createBefore = tester.getRect(
-        find.byKey(const Key('confirm-create-session')),
-      );
-      await tester.tap(find.byKey(const Key('create-session-agent')));
-      await tester.pumpAndSettle();
-      expect(
-        tester.getRect(find.byKey(const Key('create-session-name-dialog'))),
-        dialogBefore,
-      );
-      expect(
-        tester.getRect(find.byKey(const Key('create-session-name'))),
-        nameBefore,
-      );
-      expect(
-        tester.getRect(find.byKey(const Key('confirm-create-session'))),
-        createBefore,
-      );
-      expect(
-        find.byKey(const ValueKey('create-agent-option-other')),
-        findsOneWidget,
-      );
-      expect(tester.takeException(), isNull);
+        await tester.tap(find.byKey(const Key('launch-new-session')));
+        await tester.pumpAndSettle();
+        expect(
+          find.byKey(const Key('create-session-name-dialog')),
+          findsOneWidget,
+        );
+        expect(find.textContaining('/256'), findsNothing);
+        expect(model.calls, isEmpty);
+        await tester.tap(find.text('Cancel'));
+        await tester.pumpAndSettle();
+        expect(model.calls, isEmpty);
+        await tester.tap(find.byKey(const Key('launch-new-session')));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getTopLeft(find.byKey(const Key('create-session-agent'))).dy,
+          greaterThan(
+            tester
+                .getBottomLeft(find.byKey(const Key('create-session-name')))
+                .dy,
+          ),
+        );
+        final dialogBefore = tester.getRect(
+          find.byKey(const Key('create-session-name-dialog')),
+        );
+        final nameBefore = tester.getRect(
+          find.byKey(const Key('create-session-name')),
+        );
+        final createBefore = tester.getRect(
+          find.byKey(const Key('confirm-create-session')),
+        );
+        await tester.tap(find.byKey(const Key('create-session-agent')));
+        await tester.pumpAndSettle();
+        expect(
+          tester.getRect(find.byKey(const Key('create-session-name-dialog'))),
+          dialogBefore,
+        );
+        expect(
+          tester.getRect(find.byKey(const Key('create-session-name'))),
+          nameBefore,
+        );
+        expect(
+          tester.getRect(find.byKey(const Key('confirm-create-session'))),
+          createBefore,
+        );
+        expect(
+          find.byKey(const ValueKey('create-agent-option-other')),
+          findsOneWidget,
+        );
+        final anchor = tester.getRect(
+          find.byKey(const Key('create-session-agent')),
+        );
+        final option = tester.getRect(
+          find.byKey(const ValueKey('create-agent-option-other')),
+        );
+        expect(option.left, closeTo(anchor.left + PircSpacing.s6, 1));
+        expect(option.width, closeTo(anchor.width - PircSpacing.s6 * 2, 1));
+        expect(option.right, lessThanOrEqualTo(width));
+        expect(tester.takeException(), isNull);
 
-      await tester.tap(find.text('Other agent').last);
-      await tester.pumpAndSettle();
-      await tester.enterText(
-        find.byKey(const Key('create-session-name')),
-        '  Fix login  ',
-      );
-      await tester.testTextInput.receiveAction(TextInputAction.done);
-      await tester.pump(const Duration(milliseconds: 400));
-      expect(model.names, ['Fix login']);
-      expect(model.agentIds, ['other']);
-      expect(model.calls, [('/tmp/project', null)]);
-      expect(find.byKey(const Key('session-launch-dialog')), findsOneWidget);
-      model.launched.completeError(StateError('Test finished'));
-      await tester.pump();
-      await tester.tap(find.byKey(const Key('dismiss-session-launch-error')));
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(const SizedBox());
-      model.dispose();
-    },
-  );
+        await tester.tap(find.text('Other agent').last);
+        await tester.pumpAndSettle();
+        await tester.enterText(
+          find.byKey(const Key('create-session-name')),
+          '  Fix login  ',
+        );
+        await tester.testTextInput.receiveAction(TextInputAction.done);
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(model.names, ['Fix login']);
+        expect(model.agentIds, ['other']);
+        expect(model.calls, [('/tmp/project', null)]);
+        expect(find.byKey(const Key('session-launch-dialog')), findsOneWidget);
+        model.launched.completeError(StateError('Test finished'));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('dismiss-session-launch-error')));
+        await tester.pumpAndSettle();
+        await tester.pumpWidget(const SizedBox());
+        model.dispose();
+      },
+    );
+  }
   testWidgets(
     'restore loading stays visible after scrolling and times out safely',
     (tester) async {

@@ -677,6 +677,7 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
                 builder: (context, constraints) => MenuAnchor(
                   alignmentOffset: const Offset(0, PircSpacing.s6),
                   consumeOutsideTap: true,
+                  crossAxisUnconstrained: false,
                   style: MenuStyle(
                     alignment: Alignment.bottomLeft,
                     minimumSize: WidgetStatePropertyAll(
@@ -703,42 +704,45 @@ class _CreationNameDialogState extends State<_CreationNameDialog> {
                   ),
                   menuChildren: [
                     for (final agent in widget.agents)
-                      MenuItemButton(
-                        key: ValueKey('create-agent-option-${agent.id}'),
-                        onPressed: () => setState(() => agentId = agent.id),
-                        style: ButtonStyle(
-                          minimumSize: const WidgetStatePropertyAll(
-                            Size(0, PircLayout.actionSize),
-                          ),
-                          backgroundColor: WidgetStatePropertyAll(
-                            agent.id == agentId
-                                ? context.pircColors.primaryContainer
-                                : null,
-                          ),
-                          foregroundColor: WidgetStatePropertyAll(
-                            agent.id == agentId
-                                ? context.pircColors.primary
-                                : context.pircColors.onSurface,
-                          ),
-                          shape: const WidgetStatePropertyAll(
-                            RoundedRectangleBorder(
-                              borderRadius: PircRadii.composerAction,
+                      SizedBox(
+                        width: constraints.maxWidth - PircSpacing.s6 * 2,
+                        child: MenuItemButton(
+                          key: ValueKey('create-agent-option-${agent.id}'),
+                          onPressed: () => setState(() => agentId = agent.id),
+                          style: ButtonStyle(
+                            minimumSize: const WidgetStatePropertyAll(
+                              Size(0, PircLayout.actionSize),
+                            ),
+                            backgroundColor: WidgetStatePropertyAll(
+                              agent.id == agentId
+                                  ? context.pircColors.primaryContainer
+                                  : null,
+                            ),
+                            foregroundColor: WidgetStatePropertyAll(
+                              agent.id == agentId
+                                  ? context.pircColors.primary
+                                  : context.pircColors.onSurface,
+                            ),
+                            shape: const WidgetStatePropertyAll(
+                              RoundedRectangleBorder(
+                                borderRadius: PircRadii.composerAction,
+                              ),
+                            ),
+                            padding: const WidgetStatePropertyAll(
+                              EdgeInsets.symmetric(horizontal: PircSpacing.s12),
                             ),
                           ),
-                          padding: const WidgetStatePropertyAll(
-                            EdgeInsets.symmetric(horizontal: PircSpacing.s12),
+                          trailingIcon: agent.id == agentId
+                              ? const Icon(
+                                  LucideIcons.check,
+                                  size: PircIconSizes.small,
+                                )
+                              : const SizedBox(width: PircIconSizes.small),
+                          child: Text(
+                            agent.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        trailingIcon: agent.id == agentId
-                            ? const Icon(
-                                LucideIcons.check,
-                                size: PircIconSizes.small,
-                              )
-                            : const SizedBox(width: PircIconSizes.small),
-                        child: Text(
-                          agent.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                   ],
