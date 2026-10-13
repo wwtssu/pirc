@@ -16,7 +16,14 @@ const run = join(root, "work/e2e", `omp-${Date.now()}`);
 const cwd = join(run, "project"),
   agent = join(run, "agent"),
   bin = join(run, "bin");
-for (const path of [run, cwd, agent, bin, join(agent, "sessions/fixture")])
+for (const path of [
+  run,
+  cwd,
+  agent,
+  bin,
+  join(run, "tmp"),
+  join(agent, "sessions/fixture"),
+])
   mkdirSync(path, { recursive: true });
 const socket = `pirc-omp-test-${randomUUID()}`;
 const q = (s) => `'${s.replaceAll("'", "'\\''")}'`;
@@ -52,9 +59,10 @@ const findExecutable = (name) =>
 const omp = findExecutable("omp");
 assert(omp, "OMP with an available runtime is required");
 const wrapper = join(bin, "omp");
+// A macOS login shell can reset HOME; keep the launched agent in the isolated fixture.
 writeFileSync(
   wrapper,
-  `#!/bin/sh\ncase " $* " in *" --resume "*) model_args='' ;; *) model_args='--model pirc-test/controlled' ;; esac\nexec ${q(omp)} --no-extensions -e ${q(join(root, "tests/e2e/omp-provider.ts"))} --no-skills --no-rules --no-lsp --no-title --approval-mode yolo $model_args --slow pirc-test/fixture-large --session-dir ${q(join(agent, "sessions/fixture"))} "$@"\n`,
+  `#!/bin/sh\ncase " $* " in *" --resume "*) model_args='' ;; *) model_args='--model pirc-test/controlled' ;; esac\nexec env HOME=${q(run)} ${q(omp)} --no-extensions -e ${q(join(root, "tests/e2e/omp-provider.ts"))} --no-skills --no-rules --no-lsp --no-title --approval-mode yolo $model_args --slow pirc-test/fixture-large --session-dir ${q(join(agent, "sessions/fixture"))} "$@"\n`,
   { mode: 0o700 },
 );
 // Let the real server's macOS launcher run in an isolated test tmux terminal.
@@ -208,6 +216,44 @@ try {
   // An async predicate needs an explicit readiness loop.
   await wait(() => server.exitCode === null, "server running");
   await connect();
+  const homeLaunch = await request({
+    type: "launch_session",
+    agent_id: "omp",
+    generation_id: generation,
+    cwd: "~",
+    session_id: null,
+    name: "Home directory fixture",
+    create_cwd: false,
+  });
+  assert.equal(homeLaunch.type, "session_launched", JSON.stringify(homeLaunch));
+  const homeSession = await wait(
+    () =>
+      [...snapshots.values()].find(
+        (s) =>
+          s.launch_id === homeLaunch.launch_id &&
+          s.state === "idle" &&
+          !s.needs_local_attention,
+      ),
+    "OMP home directory registration",
+  );
+  assert.equal(
+    homeSession.cwd,
+    run,
+    "OMP must preserve the explicitly selected home directory",
+  );
+  const homeClose = send({ type: "close_session", ...base(homeSession) });
+  await wait(
+    () =>
+      frames.find(
+        (f) => f.request_id === homeClose && f.message.status === "completed",
+      ),
+    "home directory session exit",
+  );
+  await wait(
+    () => snapshots.get(homeSession.instance_id)?.state === "offline",
+    "home directory session offline",
+  );
+  note("OMP preserves an explicitly selected home directory");
   const launched = await request({
     type: "launch_session",
     agent_id: "omp",
@@ -223,12 +269,14 @@ try {
       [...snapshots.values()].find(
         (s) =>
           s.agent_id === "omp" &&
+          s.launch_id === launched.launch_id &&
           s.state === "idle" &&
           !s.needs_local_attention,
       ),
     "OMP registration",
   );
   assert.equal(s.name, "OMP fixture");
+  assert.equal(s.cwd, cwd, "OMP must preserve the selected project directory");
   note("server creates and registers a named OMP TUI");
   const iid = s.instance_id;
   let result = await builtin(s, "model");
@@ -594,6 +642,11 @@ try {
     "restore",
   );
   assert.equal(s.name, "Renamed OMP");
+  assert.equal(
+    s.cwd,
+    cwd,
+    "Restoring OMP must preserve the recorded project directory",
+  );
   assert.equal(s.controls.model.id, "fixture-large");
   assert.equal(s.controls.thinking_level, "high");
   const page = await request({

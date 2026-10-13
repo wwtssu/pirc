@@ -145,7 +145,11 @@ impl Launcher {
             _ => return Err("Unable to prepare the working directory".into()),
         }
         let search_path = std::env::var_os("PATH").unwrap_or_default();
-        let args = adapter.command(stored.as_ref().map(|s| s.path.as_path()), &search_path)?;
+        let args = adapter.command(
+            &cwd,
+            stored.as_ref().map(|s| s.path.as_path()),
+            &search_path,
+        )?;
         #[cfg(not(test))]
         let terminal: Option<&str> = None;
         #[cfg(test)]
@@ -468,6 +472,7 @@ mod tests {
         }
         fn command(
             &self,
+            _: &std::path::Path,
             session: Option<&std::path::Path>,
             _: &std::ffi::OsStr,
         ) -> Result<Vec<String>, String> {
@@ -522,7 +527,11 @@ mod tests {
         let saved = selected.saved_sessions().await.unwrap();
         assert_eq!(
             selected
-                .command(Some(&saved[0].path), std::ffi::OsStr::new(""))
+                .command(
+                    std::path::Path::new("/workspace"),
+                    Some(&saved[0].path),
+                    std::ffi::OsStr::new("")
+                )
                 .unwrap(),
             vec!["second", "/history/second"]
         );

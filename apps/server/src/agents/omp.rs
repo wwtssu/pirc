@@ -71,7 +71,12 @@ impl AgentAdapter for OmpAdapter {
             "XDG_CACHE_HOME",
         ]
     }
-    fn command(&self, session: Option<&Path>, search_path: &OsStr) -> Result<Vec<String>, String> {
+    fn command(
+        &self,
+        cwd: &Path,
+        session: Option<&Path>,
+        search_path: &OsStr,
+    ) -> Result<Vec<String>, String> {
         if !self.extension.is_file() {
             return Err("PiRC adapter not found. Check the device server installation.".into());
         }
@@ -82,6 +87,9 @@ impl AgentAdapter for OmpAdapter {
             .ok_or("Agent executable not found. Check the device installation.")?;
         let mut args = vec![
             executable.to_string_lossy().into_owned(),
+            // OMP otherwise auto-switches a home-directory launch to a temp directory.
+            "--cwd".into(),
+            cwd.to_string_lossy().into_owned(),
             "-e".into(),
             self.extension.to_string_lossy().into_owned(),
         ];

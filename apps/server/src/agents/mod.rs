@@ -26,7 +26,12 @@ pub(crate) trait AgentAdapter: Send + Sync {
         &self,
     ) -> Pin<Box<dyn Future<Output = Result<Vec<StoredSession>, String>> + Send + '_>>;
     fn environment_keys(&self) -> &[&str];
-    fn command(&self, session: Option<&Path>, search_path: &OsStr) -> Result<Vec<String>, String>;
+    fn command(
+        &self,
+        cwd: &Path,
+        session: Option<&Path>,
+        search_path: &OsStr,
+    ) -> Result<Vec<String>, String>;
 }
 
 /// Built-in adapters supported by this server installation.

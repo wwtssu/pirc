@@ -68,7 +68,12 @@ impl AgentAdapter for PiAdapter {
             "PI_TELEMETRY",
         ]
     }
-    fn command(&self, session: Option<&Path>, search_path: &OsStr) -> Result<Vec<String>, String> {
+    fn command(
+        &self,
+        _cwd: &Path,
+        session: Option<&Path>,
+        search_path: &OsStr,
+    ) -> Result<Vec<String>, String> {
         if !self.extension.is_file() {
             return Err("PiRC adapter not found. Check the device server installation.".into());
         }
